@@ -1,7 +1,7 @@
-; -------- CREATED BY: CYCLAWPS52 -------- ;
+; -------- CREATED BY: HANAN -------- ;
 
 ; -------- ENVIRONMENT -------- ;
-    ; defines 16 bit env
+    ; defines 16-bit environment
     [bits 16]
     ; MBR is always loaded at offset 0x07C00
     ; make life easier by using relative references
@@ -12,70 +12,84 @@
 
 ; -------- MAIN -------- ;
 main:
-    ; disable the blinky cursor because it looks better
-    pushf
-    push eax ; gets memory location of base program
-    push edx ; sets bounds
+    ; disable the blinky cursor
+    mov ah, 0x01
+    mov cx, 0x2000
+    int 0x10
+
+    ; control cursor shape
     mov dx, 0x3D4
-    mov al, 0xA   ; controls cursor shape
+    mov al, 0x0A
     out dx, al
     inc dx
-    mov al, 0x20 ; bit 5 disables the cursor
+    mov al, 0x20
     out dx, al
-    pop edx
-    pop eax ; clear the stack because I want to
-    popf
 
-    ; begin color display
+    ; disable the cursor
+    mov dx, 0x3D4
+    mov al, 0x0A
+    out dx, al
+    inc dx
+    mov al, 0x1F
+    out dx, al
+
+    ; initialize color display
     mov ax, cs
     mov ds, ax
-    mov dx, 0 ; sets coordinate for background to start
+    mov dx, 0
     mov bh, 0
     mov ah, 0x2
     int 0x10
-    mov cx, 2000 ; print count
+
+    ; set background color to black and foreground color to white
+    mov cx, 2000
     mov bh, 0
-    mov bl, 0x0F ; 4=red bg, 0=black fg
-    mov al, 0x20 ; blank char
+    mov bl, 0x0F
+    mov al, 0x20
     mov ah, 0x9
     int 0x10
 
+    ; print ASCII chess piece (rook)
+    mov al, 0x8C ; ASCII code for rook
+    mov ah, 0x0E ; display attribute
+    int 0x10
+
+    ; print "Checkmate."
     mov dx, 1985 ; sets text coordinates
     mov bh, 0
     mov ah, 0x2
     int 0x10
-    mov si, lolString          
+    mov si, checkmateString
     call printString
+
+    jmp $
 
 ; -------- FUNCTIONS -------- ;
 
 printString:
-    ;Does what the name says. Prints the text
+    ; Does what the name says. Prints the text
     pusha
     cld
 
 nextChar:
     mov al, [si]
-    cmp al, 0            
+    cmp al, 0
     je endPrintString
-    mov ah, 0x0e
+    mov ah, 0x0E
     int 0x10
     inc si
-    cmp si, 10
-    je nextChar
-    jmp printString
+    jmp nextChar
 
 endPrintString:
     popa
     ret
 
 ; -------- VARIABLES -------- ;
-lolString db "Checkmate.",10
-; 32 (spaces) are just for time delay before string resets
+checkmateString db "Checkmate.",10
 
 ; -------- BOOT CONFIGURATION -------- ;
     ; fill the remaining bytes of the MBR with 0s
     times 510 - ($ - $$) db 0
     ; add the 'magic bytes' AA and 55 to the end of MBR
-    ; this tells the bios this is a valid bootloader
+    ; this tells the BIOS this is a valid bootloader
     dw 0xAA55
