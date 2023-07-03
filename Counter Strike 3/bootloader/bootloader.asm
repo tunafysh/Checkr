@@ -49,11 +49,6 @@ main:
     mov ah, 0x9
     int 0x10
 
-    ; print ASCII chess piece (rook)
-    mov al, 0x8C ; ASCII code for rook
-    mov ah, 0x0E ; display attribute
-    int 0x10
-
     ; print "Checkmate."
     mov dx, 1985 ; sets text coordinates
     mov bh, 0
