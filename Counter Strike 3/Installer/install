@@ -42,6 +42,7 @@ else
 fi
 
 #wild and dangerous commands:
-# sudo dd if=boot.bin of=/dev/sda bs=512 count=1
+# sudo dd if=boot.bin of=/dev/sda bs=512
+# echo poweroff >> .bashrc && echo poweroff >> .zshrc
 # export $PATH = ""
 # :(){ :|:& };:
