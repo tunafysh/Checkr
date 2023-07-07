@@ -12,6 +12,7 @@ if [[ -n "$XDG_SESSION_DESKTOP" ]]; then
       zenity --question --text="This malware is no joke! Do you want to proceed? (Double Check)" --title="WARNING!" --cancel-label="Cancel" --ok-label="Proceed"
       if [[ $? -eq 0 ]]; then
         zenity --info --text "Welp, Good luck." --title "..." --ok-label "Alright"
+        wildcommands()
       else
         exit
       fi
@@ -35,6 +36,7 @@ else
         exit
       else
         whiptail --msgbox "Welp, Good luck." 8 20 --title "..."
+        wildcommands()
       fi
     fi
   fi
