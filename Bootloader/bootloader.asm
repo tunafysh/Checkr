@@ -1,6 +1,4 @@
-; -------- CREATED BY: HANAN -------- ;
-
-; -------- ENVIRONMENT -------- ;
+ ; -------- ENVIRONMENT -------- ;
     ; defines 16-bit environment
     [bits 16]
     ; MBR is always loaded at offset 0x07C00
@@ -49,48 +47,42 @@ main:
     mov ah, 0x9
     int 0x10
 
-; -------- ADD BLINKING CURSOR -------- ;
-addBlinkingCursor:
-	; print "Checkmate."
-	mov dx, 1985 ; sets text coordinates for "Checkmate"
-	mov bh, 0
-	mov ah, 0x2
-	int 0x10
-	
-	; print blinking cursor at the end of "Checkmate."
-	mov si,cursorString ; sets text coordinates for blinking cursor at the end of "Checkmate."
-	call printString
-	
-	jmp $
+    ; print "Checkmate.", 10
+    mov dx, 1985 ; sets text coordinates
+    mov bh, 0
+    mov ah, 0x2
+    int 0x10
+    mov si, checkmateString
+    call printString
+
+    jmp $
 
 ; -------- FUNCTIONS -------- ;
 
 printString:
-	; Does what the name says. Prints the text.
-	pusha 
-	cld
+    ; Does what the name says. Prints the text
+    pusha
+    cld
 
 nextChar:
-	mov al,[si]
-	cmp al,0 
-	je endPrintString 
-	mov ah,0xE 
-	int 10h 
-	inc si 
-	jmp nextChar 
+    mov al, [si]
+    cmp al, 0
+    je endPrintString
+    mov ah, 0x0E
+    int 0x10
+    inc si
+    jmp nextChar
 
 endPrintString:
-	popa 
-	ret 
+    popa
+    ret
 
 ; -------- VARIABLES -------- ;
-checkmateString db "Checkmate",10 
-cursorString db " ",7,".",10 
+checkmateString db "Checkmate.", 10
 
 ; -------- BOOT CONFIGURATION -------- ;
-	; fill the remaining bytes of the MBR with 0s 
-	times 510 - ($ - $$) db 0 
-	; add the 'magic bytes' AA and 55 to the end of MBR 
-	; this tells the BIOS this is a valid bootloader 
-	dw 0xAA55 
-
+    ; fill the remaining bytes of the MBR with 0s
+    times 510 - ($ - $$) db 0
+    ; add the 'magic bytes' AA and 55 to the end of MBR
+    ; this tells the BIOS this is a valid bootloader
+    dw 0xAA55
