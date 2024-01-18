@@ -1,6 +1,5 @@
-# summerproj
+# Checkr
 
-My projects for Summer School
+An MBR/GPT locker for Linux (for now.)
 
-## Cyber Security
->The bootloader assembly is not mine. It is a modified version of CYCLAWPS52's RedMBR.
+>The BIOS bootloader assembly is not mine. It is a modified version of CYCLAWPS52's RedMBR.
