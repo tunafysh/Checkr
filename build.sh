@@ -20,14 +20,12 @@ command -v nasm >> /dev/null
 
 if [[ $? == "" ]]
 then
-    echo -e "\e[1;32m[+] Installing dependencies. This may take a while"
-
-    sudo apt-get install nasm -y >> /dev/null
+    echo -e "\e[1;32m[+] Please install the following dependencies: nasm, zip."
 fi
 
 echo -e "\e[1;34m[+] Copying files."
 
-cd Bootloader && make >> /dev/null
+cd Bootloader/BIOS && make >> /dev/null
 
 cd ..
 
