@@ -1,11 +1,18 @@
-import os, platform, sys, pexpect
+import os, platform, sys, argparse, subprocess, shutil
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--wsl", help="Use if you want to use wsl on windows.")
+
+args = parser.parse_args()
+
+print(args.wsl)
 
 osname = platform.os.name
 
 if osname == "nt":
-    print("put windows build code here")
-elif osname == "posix":
-    print("put linux build code here")
+    print("Build started...")
+    subprocess.Popen("cd Bootloader/BIOS && Makefile", shell=True)
 else:
-    print("Unsupported system.")
+    print("Unsupported system. Use linux please.")
  
