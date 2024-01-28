@@ -2,7 +2,10 @@ import os, platform, sys, subprocess, shutil
 
 osname = platform.os.name
 
-os.path.exists("build")
+buildexists = os.path.exists("build")
+
+if buildexists:
+    cleanup()
 
 if osname == "posix":
     print("Build started...")
@@ -26,6 +29,8 @@ else:
     print("Unsupported system. Use linux please.")
     
 def cleanup():
+    """Cleans up all the binaries.
+    """
     os.rmdir("build")
     os.remove("Bootloader/BIOS/boot.bin")
     os.rmdir("Bootloader/EFI/target")
