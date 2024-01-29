@@ -129,6 +129,10 @@
   <ItemGroup>
     <ClCompile Include="Checkr.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Bootloader\BIOS\boot.bin" />
+    <None Include="..\..\Bootloader\EFI\src\main.efi" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

