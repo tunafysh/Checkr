@@ -1,28 +1,70 @@
 #include <efi/efi.h>
-#include <efi/efilib.h>
+#include <efi/efi_loader.h>
+#include <efi/efi_system_table.h>
+#include <stdlib.h>
+#include <string.h>
 
 EFI_STATUS
-EFIAPI 
+efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
+{
+  EFI_GRAPHICS_OUTPUT_PROTOCOL *GraphicsOutput;
+  EFI_GRAPHICS_MODE_INFORMATION *ModeInfo;
+  UINTN ModeNumber;
+  UINTN HorizontalResolution, VerticalResolution;
+  UINTN SizeOfInfo, FrameBufferBase, FrameBufferSize;
+  CHAR16 *OutputString;
+  EFI_STATUS Status;
 
- efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
-    InitializeLib(ImageHandle, SystemTable);
+  Status = SystemTable->ConOut->QueryMode (SystemTable->ConOut,
+                                            SystemTable->ConOut->Mode,
+                                            &SizeOfInfo,
+                                            &HorizontalResolution,
+                                            &VerticalResolution,
+                                            &ModeNumber);
+  if (EFI_ERROR (Status))
+    return Status;
 
-    // Set the foreground and background colors
-    ST->ConOut->SetAttribute(ST->ConOut, EFI_LIGHTGRAY | EFI_BACKGROUND_BLACK);
+  ModeInfo = AllocatePool (SizeOfInfo);
+  if (ModeInfo == NULL)
+    return EFI_OUT_OF_RESOURCES;
 
-    // Get the screen dimensions
-    UINTN columns, rows;
-    ST->ConOut->QueryMode(ST->ConOut, ST->ConOut->Mode->Mode, &columns, &rows);
+  Status = SystemTable->ConOut->GetMode (SystemTable->ConOut, ModeNumber,
+                                         ModeInfo);
+  if (EFI_ERROR (Status))
+    return Status;
 
-    // Calculate the position to print "Checkmate" in the center
-    UINTN xPos = (columns - 9) / 2; // 9 is the length of "Checkmate"
-    UINTN yPos = rows / 2;
+  FrameBufferBase = (UINTN) ModeInfo->FrameBufferBase;
+  FrameBufferSize = ModeInfo->FrameBufferSize;
 
-    // Print "Checkmate" in the center
-    Print(L"%*sCheckmate", xPos, L"");
+  FreePool (ModeInfo);
 
-    // Wait for a key press before exiting
-    WaitForSingleEvent(ST->ConIn->WaitForKey, 0);
-    
-    return EFI_SUCCESS;
+  GraphicsOutput = SystemTable->BootServices->OpenProtocol (ImageHandle,
+                                                              &gEfiGraphicsOutputProtocolGuid,
+                                                              (void **) &GraphicsOutput,
+                                                              ImageHandle,
+                                                              NULL,
+                                                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+
+  if (EFI_ERROR (GraphicsOutput))
+    return GraphicsOutput->StatusCode;
+
+  OutputString = AllocatePool (sizeof (CHAR16) * (strlen ("Checkmate.") + 1));
+  if (OutputString == NULL)
+    return EFI_OUT_OF_RESOURCES;
+
+  StrCpy (OutputString, L"Checkmate.");
+
+  GraphicsOutput->SetCursorPosition (GraphicsOutput,
+                                     HorizontalResolution / 2,
+                                     VerticalResolution / 2);
+  GraphicsOutput->ClearScreen (GraphicsOutput);
+  GraphicsOutput->SetAttribute (GraphicsOutput, EFI_TEXT_ATTR (EFI_LIGHTGRAY, 0));
+  GraphicsOutput->DrawHank (GraphicsOutput, FrameBufferBase, HorizontalResolution,
+                             VerticalResolution, 0, 0, (UINTN) OutputString,
+                             sizeof (CHAR16) * (strlen (OutputString) + 1));
+
+  FreePool (OutputString);
+  GraphicsOutput->Close (GraphicsOutput);
+
+  return EFI_SUCCESS;
 }
