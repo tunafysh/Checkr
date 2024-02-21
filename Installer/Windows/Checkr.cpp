@@ -147,7 +147,7 @@ int main()
     }
     else {
         //BIOS Code here
-        
+        BIOSBootFlash();
     }
 
     

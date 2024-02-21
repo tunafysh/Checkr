@@ -1,0 +1,8 @@
+﻿  Checkr.cpp
+C:\Users\Hanan\Desktop\Checkr\Installer\Windows\Checkr.cpp(42,54): warning C4267: 'argument': conversion from 'size_t' to 'DWORD', possible loss of data
+C:\Users\Hanan\Desktop\Checkr\Installer\Windows\Checkr.cpp(60,55): warning C4267: 'argument': conversion from 'size_t' to 'DWORD', possible loss of data
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 185 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Checkr.vcxproj -> C:\Users\Hanan\Desktop\Checkr\Installer\Windows\x64\Release\Checkr.exe
