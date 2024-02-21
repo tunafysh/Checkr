@@ -1,11 +1,11 @@
-#include <efi.h>
-#include <efilib.h>
+#include <efi/efi.h>
+#include <efi/efiapi.h>
 
 EFI_STATUS
 EFIAPI
 efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     InitializeLib(ImageHandle, SystemTable);
-    EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *ConOut = SystemTable->ConOut;
+    EFI_SIMPLE_TEXT_OUT_PROTOCOL *ConOut = SystemTable->ConOut;
 
     // Reset the screen to be sure the screen is clear
     ConOut->Reset(ConOut, FALSE);
