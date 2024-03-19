@@ -11,9 +11,9 @@ UefiMain (
 {
   EFI_STATUS Status;
   UINTN Columns, Rows;
-  CHAR16 *Message = L"Hello World!";
+  CHAR16 *Message = L"Checkmate.";
   UINTN MessageLen = StrLen(Message);
-  
+
   // Query the current console mode to get screen dimensions
   Status = gST->ConOut->QueryMode(gST->ConOut, gST->ConOut->Mode->Mode, &Columns, &Rows);
   if (EFI_ERROR(Status)) {
@@ -30,14 +30,17 @@ UefiMain (
   // Clear the screen
   gST->ConOut->ClearScreen(gST->ConOut);
 
+  // Set the foreground color to white (UEFI Graphics Output Protocol)
+  gST->ConOut->SetAttribute(gST->ConOut, EFI_WHITE);
+
   // Move the cursor to the calculated position
   gST->ConOut->SetCursorPosition(gST->ConOut, StartColumn, MiddleRow);
 
   // Print the message
   Print(L"%s\n", Message);
-
-  // Halt the system so we can see the message
-  SystemTable->BootServices->Stall(5000000); // Stall for 5 seconds
+  while (1){
+    SystemTable->BootServices->Stall(1000000); // Stall for 5 seconds
+  }
 
   return EFI_SUCCESS;
 }
