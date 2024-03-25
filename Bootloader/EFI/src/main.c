@@ -38,8 +38,13 @@ UefiMain (
 
   // Print the message
   Print(L"%s\n", Message);
+
+  //Move the cursor off-screen
+  gST->ConOut->EnableCursor(gST->ConOut, FALSE);
+
+  //Keep the system busy
   while (1){
-    SystemTable->BootServices->Stall(1000000); // Stall for 5 seconds
+    SystemTable->BootServices->Stall(1000000); // Stall for 1 seconds
   }
 
   return EFI_SUCCESS;
