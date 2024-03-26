@@ -39,7 +39,7 @@ UefiMain (
   // Print the message
   Print(L"%s\n", Message);
 
-  //Move the cursor off-screen
+  //Disable the cursor
   gST->ConOut->EnableCursor(gST->ConOut, FALSE);
 
   //Keep the system busy
