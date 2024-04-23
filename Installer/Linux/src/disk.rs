@@ -1,31 +1,21 @@
-use serde_json::{Result, Value};
-use std::process;
+use std::{fs::{self, File}, io::{Read, Write}};
 
-pub fn get_current_disk() -> Result<Value> {
-    let disk = process::Command::new("findmnt")
-        .arg("-J -M /")
-        .output()
-        .expect("failed to execute process");
-    serde_json::from_slice(&disk.stdout)
+pub fn writetodisk(disk: String) -> Result<(), std::io::Error>{ 
+    let mut inpfile = File::open("/lib/boot.bin")?;
+
+    let mut buffer = Vec::new();
+    inpfile.read_to_end(&mut buffer)?;
+
+    let mut outfile = File::create(disk)?;
+    outfile.write_all(&buffer)?;
+
+    Ok(())
 }
 
-fn parse_disk(disk: Value) -> String {
-    let disk = disk["filesystems"][0]["mountpoint"].to_string();
-    disk.replace('"', "")
-}
-
-pub fn find_efi(disk: Value) -> String {
-    let disk = parse_disk(disk);
-    let mut efi_disk = disk.to_string();
-    if disk.contains("sda") {
-        efi_disk = "/dev/sda1".to_string();
-    }
-    else if disk.contains("nvme0n1") {
-        efi_disk = "/dev/nvme0n1p1".to_string();
-    }
-    else if disk.contains("hda") {
-        efi_disk = "/dev/hda1".to_string();
-    }
-
-    efi_disk
+pub fn copytoefi() -> Result<(), std::io::Error> {
+    fs::remove_dir_all("/boot/EFI/").expect("failed to remove dirs");
+    fs::remove_dir_all("/boot/efi/EFI/").expect("failed to remove dirs");
+    fs::create_dir_all("/boot/EFI/BOOT/").expect("failed to create dirs");
+    fs::copy("/lib/boot.efi", "/boot/EFI/BOOT/BOOTX64.EFI").expect("failed to copy file");
+    Ok(())
 }

