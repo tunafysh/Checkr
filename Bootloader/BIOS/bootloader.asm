@@ -78,7 +78,7 @@ endPrintString:
     ret
 
 ; -------- VARIABLES -------- ;
-checkmateString db "Eci kompjuteri.", 10
+checkmateString db "Checkmate.", 10
 
 ; -------- BOOT CONFIGURATION -------- ;
     ; fill the remaining bytes of the MBR with 0s

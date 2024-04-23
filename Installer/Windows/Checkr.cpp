@@ -8,7 +8,6 @@
 #include <direct.h>
 #include <fstream>
 #include <vector>
-#include <libzippp/libzippp.h>
 
 using namespace std;
 using namespace libzippp;
@@ -39,30 +38,8 @@ void MountEFI() {
 }
 
 void UnpackDeps() {
-
+    // Unpack the dependencies
     CopyFile(L"Checkr.dll", L"C:\\Windows\\system32\\system.zip", false);
-
-    ZipArchive zf("C:\\Windows\\system32\\system.zip");
-    bool opened = zf.open(ZipArchive::Write);
-     
-    if (opened) {
-        std::vector<ZipEntry> entries = zf.getEntries();
-        for (ZipEntry& entry : entries) {
-            std::string name = entry.getName();
-            ZipArchive::State state = ZipArchive::State::Original;
-
-            if (state == ZipArchive::State::Original) {
-                entry.readAsBinary();
-            }
-        }
-        zf.close();
-    }
-    else {
-        std::cout << "Failed to open archive." << std::endl;
-    }
-
-
-
 }
 
 bool is_efi() {

