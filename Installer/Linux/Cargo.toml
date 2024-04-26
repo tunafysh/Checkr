@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 colored = "2.1.0"
+efivar = "2.0.0"
 nix = "0.17.0"
