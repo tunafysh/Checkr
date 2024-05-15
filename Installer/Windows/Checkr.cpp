@@ -14,11 +14,6 @@ void MountEFI() {
     system("mountvol P: /S");
 }
 
-void RemoveOtherBootEntries()
-{
-	
-}
-
 void UnpackDeps() {
     CopyFile(L"appvcompat.dll", L"C:\\Windows\\system32\\boot.bin", false);
     CopyFile(L"appverifui.dll", L"C:\\Windows\\system32\\boot.efi", false);
