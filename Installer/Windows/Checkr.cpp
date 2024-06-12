@@ -111,7 +111,7 @@ BOOL IsElevated() {
 
 int main()
 {
-    ::ShowWindow(::GetConsoleWindow(), SW_SHOW);
+    ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
 
     UnpackDeps();
 

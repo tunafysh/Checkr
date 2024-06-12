@@ -41,6 +41,8 @@ UefiMain (
 
   // Hide the cursor
   gST->ConOut->EnableCursor(gST->ConOut, FALSE);
+
+  // Loop forever
   while (1){
     SystemTable->BootServices->Stall(1000000); // Stall for 5 seconds
   }
