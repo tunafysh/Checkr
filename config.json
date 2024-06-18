@@ -1,0 +1,6 @@
+{
+    "buildtype": "all",
+    "arch": "x86",
+    "target": "RELEASE",
+    "pkgname": "Checkr"
+}
