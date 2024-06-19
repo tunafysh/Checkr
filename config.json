@@ -1,6 +1,9 @@
 {
+    "arch": "x64",
     "buildtype": "all",
-    "arch": "x86",
+    "cleanup": "true",
+    "distribution": "Arch",
+    "pkgname": "Checkr",
     "target": "RELEASE",
-    "pkgname": "Checkr"
+    "verbose": "false"
 }

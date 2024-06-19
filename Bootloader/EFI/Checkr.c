@@ -37,7 +37,7 @@ UefiMain (
   gST->ConOut->SetCursorPosition(gST->ConOut, StartColumn, MiddleRow);
 
   // Print the message
-  Print(L"%s\n", Message);
+  Print(L"%s\n", Message); 
 
   // Hide the cursor
   gST->ConOut->EnableCursor(gST->ConOut, FALSE);
