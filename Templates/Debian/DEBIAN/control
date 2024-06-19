@@ -1,1 +1,5 @@
- 
+Package: Checkr
+Version: 1.0.0
+Architecture: x64
+Maintainer: Unknown
+Description: Lorem ipsum dolor sit amet.

@@ -1,9 +1,11 @@
 {
     "arch": "x64",
-    "buildtype": "all",
-    "cleanup": "true",
+    "buildtype": "installer",
+    "cleanup": "false",
     "distribution": "Arch",
+    "pkgdesc": "Lorem ipsum dolor sit amet",
     "pkgname": "Checkr",
+    "pkgver": "1.0.0",
     "target": "RELEASE",
-    "verbose": "false"
+    "verbose": "true"
 }

