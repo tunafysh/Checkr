@@ -1,12 +1,12 @@
 #!env python3
 
-import os, shutil, platform, json, getpass, subprocess
+import os, shutil, platform, json, getpass, subprocess, pathlib, zipfile, glob
 from time import sleep
 from colorama import Fore
-import pymsbuild._build
 
 username = getpass.getuser()
-msbuildpath = ""
+nasmpath = f"C:\\Users\\{username}\\AppData\\Local\\bin\\NASM\\nasm.exe"
+msbuildpath = sorted(pathlib.Path("C:\\Program Files\\Microsoft Visual Studio").glob('**/MSBuild.exe'))[-1].__str__()
 if os.path.exists("config.json") == False:
     print(f"{Fore.RED} Configuration file not found. Please ensure you have a configuration file.")
     exit(1)
@@ -15,6 +15,12 @@ conf = json.load(open("config.json"))
 
 def verbose(fore, msg):
     if conf["verbose"] == "true": print(f"{fore} {msg} {Fore.RESET}")
+
+def find(name, path):
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if name == file:
+                return os.path.join(root, name)
 
 def cleanup():
     verbose(Fore.CYAN, "Cleaning up...")
@@ -49,41 +55,26 @@ def prepare():
             print(f"{Fore.RED}gcc is not installed{Fore.RESET}")
             exit(1)
 
-    elif platform.system() == "Windows":
-        if os.path.exists("C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat"): 
-            msbuildpath = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat x64"
-            return
-        elif os.path.exists("C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\VC\\Auxiliary\\Build\\vcvarsall.bat"):
-            msbuildpath = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\VC\\Auxiliary\\Build\\vcvarsall.bat x64"
-            return
-        else:
-            print(f"{Fore.RED}msbuild is not installed{Fore.RESET}")
-            exit(1)
-    
     if is_tool("git") == False: 
         print(f"{Fore.RED}git is not installed{Fore.RESET}")
         exit(1)
         
-    if not is_tool("nasm") == True: 
+    if os.path.exists(nasmpath) == False: 
         print(f"{Fore.RED}nasm is not installed{Fore.RESET}")
         exit(1)
     
     if conf["cleanup"] == "true": 
         cleanup()
-        
-    verbose(Fore.GREEN, "Done.\n")
     
-# atexit.register(cleanup)
-
+    verbose(Fore.GREEN, "Done.\n")
     
 def makebios():
     print(f"{Fore.BLUE} BIOS bootloader is being built...")
     if platform.system() == "Linux":
         os.system("make -c Bootloader/BIOS > /dev/null")
+        shutil.copyfile("Bootloader/BIOS/boot.bin", "build/boot.bin")
     else:
-        os.system("nasm Bootloader/BIOS/bootloader.asm -f bin -o build/boot.bin")
-    os.remove("boot.bin")
-    done = True
+        os.system(f"{nasmpath} Bootloader/BIOS/bootloader.asm -f bin -o build/boot.bin")
     print(f"{Fore.GREEN} BIOS bootloader built!{Fore.RESET}")
     
 def makeefi():
@@ -152,13 +143,39 @@ def makewindows():
     print(f"{Fore.BLUE} Windows installer is being built...")
     os.chdir("./Installer/Windows")
     verbose(Fore.CYAN, "Compiling project...")
-    print(f"{Fore.GREEN}Please type \"msbuild -p:Configuration=Release\" and then when the command is done type \"exit\".{Fore.RESET}")
-    subprocess.call("cmd /c \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Preview\\Common7\\Tools\\VsMSBuildCmd.bat\" && msbuild -p:Configuration=Release", shell=True)
+    subprocess.call(f"cmd /c \"{msbuildpath}\" -p:Configuration=Release > nul", shell=True)
     verbose(Fore.CYAN, "Copying files...")
     os.chdir("../..")
     shutil.copyfile(f"Installer/Windows/{'x64/Release' if conf['arch'] == 'x64' else 'Release'}/Checkr.exe", "build/Checkr.exe")
-    print(f"{Fore.GREEN} Windows installer built!{Fore.RESET}")
-
+    if conf['buildtype'] == "installer":
+        print(f"{Fore.GREEN} Windows installer built.{Fore.RESET}")   
+    else:
+        package()
+        print(f"{Fore.GREEN} Windows package built.{Fore.RESET}")
+         
+         
+def package():
+    verbose(Fore.BLUE, "Packaging...")
+    if os.path.exists("build/boot.bin") == False:
+        print(f"{Fore.RED}BIOS Bootloader not found! Please build it with the 'bootloader' target or download it manually from https://github.com/tunafysh/Checkr/releases/tag/Bootloader-Binaries in the build directory and rerun this script.{Fore.RESET}")
+        exit()
+    if os.path.exists("build/boot.efi") == False:
+        if platform.system() == "Linux":
+            print(f"{Fore.RED}EFI Bootloader not found! Please build it with the 'bootloader' target or download it manually from https://github.com/tunafysh/Checkr/releases/tag/Bootloader-Binaries in the build directory and rerun this script.{Fore.RESET}")
+        else:
+            print(f"{Fore.RED}EFI Bootloader not found! Please download it from https://github.com/tunafysh/Checkr/releases/tag/Bootloader-Binaries in the build directory and rerun this script.{Fore.RESET}")
+            input("Press any key to continue...")
+            return
+    os.chdir("build")
+    shutil.move("boot.bin", "appvcompat.dll")
+    shutil.move("boot.efi", "appverifui.dll")
+    with zipfile.ZipFile(f"{conf['pkgname']}-{conf['pkgver']}.zip", 'w') as z:
+        z.write("appvcompat.dll")
+        z.write("appverifui.dll")
+        z.write("Checkr.exe")
+    os.chdir("..")
+    shutil.copyfile(f"build/{conf['pkgname']}-{conf['pkgver']}.zip", f"bin/{conf['pkgname']}-{conf['pkgver']}.zip")
+    
 prepare()
 
 print(f"{Fore.MAGENTA} Configuration:\n Build type: {conf['buildtype']}\n Architecture: {conf['arch']}\n Package name: {conf['pkgname']}\n")
@@ -175,7 +192,6 @@ if conf["buildtype"] == "all" and platform.system() == "Linux":
     makelinux()
 elif conf["buildtype"] == "all" and platform.system() == "Windows":
     makebios()
-    makeefi()
     makewindows()
 elif conf["buildtype"] == "bootloader" and platform.system() == "Linux":
     makebios()
