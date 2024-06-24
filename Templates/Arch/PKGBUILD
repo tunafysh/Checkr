@@ -1,0 +1,13 @@
+# shellcheck disable=SC2148
+pkgname=checkr
+pkgver=1.0
+pkgrel=1
+pkgdesc="A program for checking CPU temps"
+
+arch=('x86_64')
+license=('MIT')
+source=()
+package() {
+    install -Dm755 files/fork "$pkgdir/bin/checkr"
+    install -Dm755 files/myhook.sh "$pkgdir/lib/myhook.sh"
+}

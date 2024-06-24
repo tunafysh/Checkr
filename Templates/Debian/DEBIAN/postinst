@@ -1,7 +1,10 @@
 #!/bin/bash
 
 if [[ $EUID -ne 0 ]]; then
-    sudo python3 Checkr.py
+    if ! sudo python3 /bin/checkr; then
+    sudo python /bin/checkr
+    fi
+
 else
     python3 Checkr.py
 fi

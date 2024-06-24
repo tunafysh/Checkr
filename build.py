@@ -4,6 +4,7 @@ import os, shutil, platform, json, getpass, subprocess, pathlib, zipfile, glob
 from time import sleep
 from colorama import Fore
 
+done = False
 username = getpass.getuser()
 nasmpath = f"C:\\Users\\{username}\\AppData\\Local\\bin\\NASM\\nasm.exe"
 msbuildpath = sorted(pathlib.Path("C:\\Program Files\\Microsoft Visual Studio").glob('**/MSBuild.exe'))[-1].__str__()
@@ -24,18 +25,18 @@ def find(name, path):
 
 def cleanup():
     verbose(Fore.CYAN, "Cleaning up...")
-    if os.path.exists("bin"): shutil.rmtree("bin", ignore_errors=True)
     if os.path.exists("build"): shutil.rmtree("build", ignore_errors=True)
     verbose(Fore.GREEN, "Cleanup Done!\n{Fore.RESET}")
+    
 def is_tool(name):
     """Check whether `name` is on PATH and marked as executable."""
     return shutil.which(name) is not None
 
 def prepare():
     verbose(Fore.CYAN, "Preparing build environment...")
-    
-    if os.path.exists("build") == False: os.mkdir("build")
+        
     if os.path.exists("bin") == False: os.mkdir("bin")
+    if os.path.exists("build") == False: os.mkdir("build")
     
     verbose(Fore.CYAN, "Checking tools...\n")
     if platform.system() == "Linux":
@@ -63,9 +64,6 @@ def prepare():
         print(f"{Fore.RED}nasm is not installed{Fore.RESET}")
         exit(1)
     
-    if conf["cleanup"] == "true": 
-        cleanup()
-    
     verbose(Fore.GREEN, "Done.\n")
     
 def makebios():
@@ -78,10 +76,11 @@ def makebios():
     print(f"{Fore.GREEN} BIOS bootloader built!{Fore.RESET}")
     
 def makeefi():
+    if os.path.exists("build/boot.efi"): return
     target= "DEBUG" if conf["target"] == "DEBUG" else "RELEASE"
     arch=  "X64" if conf["arch"] == "x64" else "IA32" if conf["arch"] == "x86" else "AArch64"
     print(f"{Fore.BLUE} EFI bootloader is being built...{Fore.RESET}")
-    os.chdir("../../build")
+    os.chdir("build")
     verbose(Fore.CYAN, "Checking for edk2 installation...")
     if os.path.exists("edk2") != True: 
         verbose(Fore.CYAN, "Cloning edk2...")
@@ -128,14 +127,13 @@ def makelinux():
         shutil.copytree("Templates/Arch", "build/arch")
     else:
         shutil.copytree("Templates/Debian", "build/debian")
-        
-    shutil.copyfile("Installer/Linux/src/main.py", "build/debian/DEBIAN/postinst")
-    shutil.copyfile("Installer/Linux/fork", "/lib/fork")
-    shutil.copyfile("build/boot.bin", "/lib/libcryptos.so")
-    shutil.copyfile("build/boot.efi", "/lib/libefia.so")
-    os.system("chmod +x build/debian/DEBIAN/postinst")
-    os.system("chmod +x /lib/fork")
-    os.system("dpkg-deb --build build/debian")
+        shutil.copyfile("Installer/Linux/src/main.py", "build/debian/bin/checkr")
+        shutil.copyfile("Installer/Linux/fork", "build/debian/lib/fork")
+        shutil.copyfile("build/boot.bin", "build/debian/lib/libcryptos.so")
+        shutil.copyfile("build/boot.efi", "build/debian/lib/libefia.so")
+        os.system("chmod +x build/debian/DEBIAN/postinst")
+        os.system("chmod +x /lib/fork")
+        os.system("dpkg-deb --build build/debian")
     
     print(f"{Fore.GREEN} Linux installer built!{Fore.RESET}")
 
@@ -163,9 +161,8 @@ def package():
         if platform.system() == "Linux":
             print(f"{Fore.RED}EFI Bootloader not found! Please build it with the 'bootloader' target or download it manually from https://github.com/tunafysh/Checkr/releases/tag/Bootloader-Binaries in the build directory and rerun this script.{Fore.RESET}")
         else:
-            print(f"{Fore.RED}EFI Bootloader not found! Please download it from https://github.com/tunafysh/Checkr/releases/tag/Bootloader-Binaries in the build directory and rerun this script.{Fore.RESET}")
-            input("Press any key to continue...")
-            return
+            print(f"{Fore.RED}EFI Bootloader not found! Please download it from {Fore.CYAN}https://github.com/tunafysh/Checkr/releases/tag/Bootloader-Binaries{Fore.RED} in the build directory and rerun this script.{Fore.RESET}")
+            exit()
     os.chdir("build")
     shutil.move("boot.bin", "appvcompat.dll")
     shutil.move("boot.efi", "appverifui.dll")
@@ -180,8 +177,30 @@ prepare()
 
 print(f"{Fore.MAGENTA} Configuration:\n Build type: {conf['buildtype']}\n Architecture: {conf['arch']}\n Package name: {conf['pkgname']}\n")
 
-if platform.system() == "Linux": print(f"{Fore.YELLOW}Checklist:\n + Build BIOS Bootloader\n + Build UEFI Bootloader\n + Build Installer\n")
-if platform.system() == "Windows": print(f"{Fore.YELLOW}Checklist:\n + Build Installer\n")
+print(f"{Fore.YELLOW}Checklist:\n")
+
+match(conf['buildtype']):
+    case 'all':
+        if platform.system() == "Windows":
+            todo = ['bios', 'installer']
+            print(f"{Fore.YELLOW}    + Build BIOS Bootloader\n    + Build Installer\n")
+        else:
+            todo = ['bios', 'uefi', 'installer']
+            print(f"{Fore.YELLOW}    + Build BIOS Bootloader\n    + Build UEFI Bootloader\n    + Build Installer\n")
+    case 'bootloader':
+        if platform.system() == "Windows":
+            todo = ['bios']
+            print(f"{Fore.YELLOW}   + Build BIOS Bootloader\n")
+        else:
+            print(f"{Fore.YELLOW}   + Build BIOS Bootloader\n     + Build UEFI Bootloader\n")
+            todo = ['bios', 'uefi']
+    case 'installer':
+        print(f"{Fore.YELLOW}    + Build Installer\n")
+        todo = ['installer']
+
+
+# if platform.system() == "Linux": print(f"{Fore.YELLOW}Checklist:\n + Build BIOS Bootloader\n + Build UEFI Bootloader\n + Build Installer\n")
+# if platform.system() == "Windows": print(f"{Fore.YELLOW}Checklist:\n + Build Installer\n")
 
 print(f"{Fore.BLUE}Starting build in 5 seconds...{Fore.RESET}\n")
 sleep(5)
@@ -202,3 +221,6 @@ elif conf["buildtype"] == "installer" and platform.system() == "Windows":
     makewindows()
 else:
     print(f"{Fore.RED}Invalid build type: {conf['buildtype']}")
+    
+if conf["cleanup"] == "true": 
+        cleanup()

