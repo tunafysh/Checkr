@@ -12,7 +12,7 @@ if os.path.exists("config.json") == False:
     print(f"{Fore.RED} Configuration file not found. Please ensure you have a configuration file.")
     exit(1)
 
-conf = json.load(open("config.json"))
+conf = json.load(open('config.json'))
 
 def verbose(fore, msg):
     if conf["verbose"] == "true": print(f"{fore} {msg} {Fore.RESET}")
