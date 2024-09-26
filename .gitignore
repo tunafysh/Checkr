@@ -1,2 +1,3 @@
-Installer\Windows\x64
-Installer\Linux\target
+Installer/Windows/x64
+Installer/Linux/target
+Installer/target
