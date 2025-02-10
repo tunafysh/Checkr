@@ -1,5 +1,5 @@
-boot.bin: bootloader.asm
+boot.img: bootloader.asm
 	nasm $^ -f bin -o $@
 
-test: boot.bin
-	qemu-system-i386 -hda boot.bin
+test: boot.img
+	qemu-system-i386 -hda boot.img
