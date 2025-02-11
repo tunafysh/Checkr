@@ -1,318 +1,157 @@
-;; SETUP
-bits 16
-org 7C00h
+ ; -------- ENVIRONMENT -------- ;
+    ; defines 16-bit environment
+    [bits 16]
+    ; MBR is always loaded at offset 0x07C00
+    ; make life easier by using relative references
+    [org 0x7C00]
 
-jmp display_message
+    mov ah, 07h
+    int 10h
 
-;; CONSTANTS
-VIDMEM 		equ	0B800h
-SCREENW 	equ	80
-SCREENH 	equ	25
-WINCOND 	equ	3
-BGCOLOR 	equ	0000h
-APPLECOLOR 	equ	4020h
-SNAKECOLOR 	equ 2020h
-TIMER      	equ 046Ch
-SNAKEXARRAY equ 1000h
-SNAKEYARRAY equ 2000h
-UP 			equ	0
-DOWN		equ 1
-LEFT 		equ 2
-RIGHT		equ 3
+; -------- MAIN -------- ;
+main:
+    ; disable the blinky cursor
+    mov ah, 0x01
+    mov cx, 0x2000
+    int 0x10
 
+    ; control cursor shape
+    mov dx, 0x3D4
+    mov al, 0x0A
+    out dx, al
+    inc dx
+    mov al, 0x20
+    out dx, al
 
-;;VARIABLES
-playerX: dw 40
-playerY: dw 12
-appleX:  dw 16
-appleY:  dw 8
-direction: db 4
-snakeLength: dw 1
-message db 'Your computer has been infected.', 0Dh, 0Ah
-		db 'To fix it, win this game of snake.', 0Dh, 0Ah, 0Dh, 0Ah
-		db 'Press P to proceed', 0Dh, 0Ah, 0
+    ; disable the cursor
+    mov dx, 0x3D4
+    mov al, 0x0A
+    out dx, al
+    inc dx
+    mov al, 0x1F
+    out dx, al
 
-;;LOGIC-----------
-;; DISPLAY MESSAGE
-display_message:
-	mov si, message
-	call print_string
+    ; initialize color display
+    mov ax, cs
+    mov ds, ax
+    mov dx, 0
+    mov bh, 0
+    mov ah, 0x2
+    int 0x10
+
+    ; set background color to black and foreground color to white
+    mov cx, 2000
+    mov bh, 0
+    mov bl, 0x0F
+    mov al, 0x20
+    mov ah, 0x9
+    int 0x10
+
+    ; print "Checkmate.", 10
+    mov dx, 1975 ; sets text coordinates
+    mov bh, 0
+    mov ah, 0x2
+    int 0x10
+    mov si, message
+    call printString
+
+    ; print "To fix it, win this game of snake.", 10
+    mov dx, 2406 ; sets text coordinates
+    mov bh, 0
+    mov ah, 0x2
+    int 0x10
+    mov si, message2
+    call printString
+
+    ; print "Press ",0x7D," to continue.", 0
+    mov dx, 3005 ; sets text coordinates
+    mov bh, 0
+    mov ah, 0x2
+    int 0x10
+    mov si, message3
+    ; Set text color to green
+    cmp si, 0x7D
+	je green
+
+    call printString
+
 	call wait_for_p_key
-	jmp setup_game
 
-print_string:
-	lodsb
-	or al, al
-	jz .done
-	cmp al, 'P'
-	jne .print_char
-	mov ah, 0Ah  ; Green text on black background
-	jmp .print
-.print_char:
-	mov ah, 0Eh  ; Default color
-.print:
-	int 10h
-	jmp print_string
-.done:
+    jmp $
+
+; -------- FUNCTIONS -------- ;
+
+printString:
+    ; Does what the name says. Prints the text
+    pusha
+    cld
+
+nextChar:
+    mov al, [si]
+    cmp al, 0
+    je endPrintString
+    mov ah, 0x0E
+    int 0x10
+    inc si
+    jmp nextChar
+
+endPrintString:
+    popa
+    ret
+
+green:
+	mov ah, 09h
+	mov al, [si]
+	mov bl, 0x0A
+	int 0x10
 	ret
-
 
 wait_for_p_key:
 	mov ah, 00h
 	int 16h
 	cmp al, 'p'
+	je load_snake
+	cmp al, 'P'
+	je load_snake
+	cmp al, 'p'
 	jne wait_for_p_key
 	ret
-	
-setup_game:
-    ;; Set video mode - VGA mode  03h (80x25 text mode, 16 colors)
-	mov ax, 0003h
-	int 10h
-	
-	;; Set up video memory
-	mov ax, VIDMEM
+
+load_snake:
+	mov ax, 0x07C0
+	mov ds, ax
 	mov es, ax
-	
-	;; Set 1st sanake segment "head"
-	mov ax, [playerX]
-	mov word [SNAKEXARRAY], ax
-	mov ax, [playerY]
-	mov word [SNAKEYARRAY], ax
 
-;; HIDE CURSUR
-	mov ah, 02h
-	mov dx, 2600h ;DH=ROW DL=COL 
-	int 10h
-;; GAME LOOP
-game_loop:
-	;; Clear screen every loop iteration
-	mov ax, BGCOLOR
-	xor di, di
-	mov cx, SCREENW*SCREENH
-	rep stosw 
-	
-	;; Draw snake
-	xor bx, bx
-	xor cx, [snakeLength]
-	mov ax, SNAKECOLOR
-	.snake_loop:
-		imul di, [SNAKEYARRAY+bx], SCREENW*2  ; Y POSITION OF SNAKE, 2 BYTES
-		imul dx, [SNAKEXARRAY+bx], 2  
-		add di, dx
-		stosw
-		inc bx
-		inc bx
-	loop .snake_loop
+	mov bx, 0x1000
+	mov ah, 0x02
+	mov al, 2
+	mov ch, 0
+	mov cl, 2
+	mov dh, 0
+	mov dl, 0
+
+	int 0x13
+
+	jc read_error
+
+	jmp 0x1000:0000
+
+read_error:
+	jmp hang
+
+hang:
+	jmp hang
 
 
-	;; Draw apple
-	imul di, [appleY], SCREENW*2
-	imul dx, [appleX], 2
-	add di, dx
-	mov ax, APPLECOLOR
-	stosw
-	
+; -------- VARIABLES -------- ;
+message db "Your computer has been infected", 0
+message2 db "To fix it, win this game of snake.", 0
+message3 db "Press P to continue.", 0
 
-	;; MOVE snake in current direction
-	mov al, [direction]
-	cmp al, UP
-	je move_up
-	cmp al, DOWN
-	je move_down
-	cmp al, LEFT
-	je move_left
-	cmp al, RIGHT
-	je move_right
-	
-	jmp update_snake
+; -------- BOOT CONFIGURATION -------- ;
+    ; fill the remaining bytes of the MBR with 0s
+    times 510 - ($ - $$) db 0
+    ; add the 'magic bytes' AA and 55 to the end of MBR
+    ; this tells the BIOS this is a valid bootloader
+    dw 0xAA55
 
-
-	move_up:
-		dec word [playerY]  ;move up 1 row
-		jmp update_snake
-
-	move_down:
-		inc word [playerY]  ;move down 1 row
-        jmp update_snake
-
-	move_left:
-		dec word [playerX]  ;move left 1 row
-        jmp update_snake
-	
-	move_right:
-		inc word [playerX]  ;move right 1 row
-      
-	;; update snake position..... 
-	update_snake:
-		;; update all snake segments past head
-		imul bx, [snakeLength], 2
-		.snake_loop:
-			mov ax, [SNAKEXARRAY-2+bx]
-			mov word [SNAKEXARRAY+bx], ax
-			mov ax, [SNAKEYARRAY-2+bx]
-            mov word [SNAKEYARRAY+bx], ax
-
-			dec bx
-			dec bx
-		jnz .snake_loop
-
-	;; store updated values to head....
-	mov ax, [playerX]
-	mov word [SNAKEXARRAY], ax
-	mov ax, [playerY]
-	mov word [SNAKEYARRAY], ax
-
-	;; Lose conditions
-	;; 1) hit borders
-	cmp word [playerY], -1  ;top of screen
-	je game_lost
-	cmp word [playerY], SCREENH ; Bottom of screen
-	je game_lost
-	cmp word [playerX], -1 ; Left screen
-	je game_lost
-	cmp word [playerX], SCREENW ; Right of screen
-	je game_lost
-
-	;; 2) hit parrt of snake
-	cmp word [snakeLength], 1
-	je get_player_input
-
-	mov bx, 2                 ; Array indexes, start at 2nd array
-	mov cx, [snakeLength]  ; Loop counter........
-	check_hit_snake_loop:
-		mov ax, [playerX]
-		cmp ax, [SNAKEXARRAY+bx]
-		jne .increment
-
-		mov ax, [playerY]
-		cmp ax, [SNAKEYARRAY+bx]
-		je game_lost            ; hit snake body........
-
-		.increment:
-			inc bx
-			inc bx
-	loop check_hit_snake_loop	
-
-
-	get_player_input:
-		mov bl, [direction] ; save current direction
-		
-		mov ah, 1
-		int 16h     ;get Keyboard status
-		jz  check_apple		; if no key was pressed move on..
-		
-		xor ah, ah
-		int 16h    ; get keystrokes, AH=scancode, AL=asciichar entered
-		cmp al, 'w'
-		je w_pressed
-		cmp al, 's'
-        je s_pressed
-		cmp al, 'a'
-        je a_pressed
-		cmp al, 'd'
-        je d_pressed
-		
-		jmp check_apple
-
-		w_pressed:
-			mov bl, UP
-			jmp check_apple
-		
-		s_pressed:
-			mov bl, DOWN
-            jmp check_apple
-
-		a_pressed:
-			mov bl, LEFT
-            jmp check_apple
-
-		d_pressed:
-			mov bl, RIGHT
-            jmp check_apple
-	
-	;; did player hit apple?........
-	check_apple:
-		mov byte [direction], bl
-		
-		mov ax, [playerX]
-		cmp ax, [appleX]
-		jne delay_loop
-
-		mov ax, [playerY]
-		cmp ax, [appleY]
-		jne delay_loop
-; hit apple , increase snake length.............
-		inc word [snakeLength]
-		cmp word [snakeLength], WINCOND
-		je game_won
-	
-	next_apple:
-		;; random X position
-		xor ah, ah
-		int 1Ah   ;timer ticks 
-		mov ax, dx
-		xor dx, dx
-		mov cx, SCREENW
-		div cx
-		mov word [appleX], dx
-
-		;; random Y pos
-		xor ah, ah
-        int 1Ah   ;timer ticks 
-        mov ax, dx
-        xor dx, dx
-        mov cx, SCREENH
-        div cx
-        mov word [appleY], dx
-
-	;; check if apple spawn
-	xor bx, bx
-	mov cx, [snakeLength]
-	.check_loop:
-		mov ax, [appleX]
-		cmp ax, [SNAKEXARRAY+bx]
-		jne .increment
-
-		mov ax, [appleY]
-        cmp ax, [SNAKEYARRAY+bx]
-        je next_apple
-
-		.increment:
-			inc bx
-			inc bx
-	loop .check_loop
-
-	
-	delay_loop:
-		mov bx, [TIMER]
-		inc bx
-		inc bx
-		.delay:
-			cmp [TIMER], bx
-			jl .delay
-
-jmp game_loop
-
-;; GAME END CONDITIONS
-game_won:
-    mov dword [ES:0000], 00490057h ;WI 
-    mov dword [ES:0004], 0F210F4Eh ;N!
-	jmp reset
-
-game_lost:
-    mov dword [ES:0000], 0F4F0F4Ch ;LO 
-    mov dword [ES:0004], 0F450F53h ;SE
-
-;; RESET
-reset:
-	xor ah, ah
-	int 16h
-
-	jmp 0FFFFh:0000h    ; reboot
-;;	int 19h              ;alternative restart qemu
-
-
-;;BOOT SECTOR PADDING
-times 510 - ($-$$) db 0
-
-dw 0AA55h
