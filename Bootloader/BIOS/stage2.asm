@@ -1,276 +1,312 @@
-[bits 16]
-[org 0x0000]
+[org 0x8000]
+mov ax, 0x07C0
+mov ds, ax
 
-;; CONSTANTS
-VIDMEM 		equ	0B800h
-SCREENW 	equ	80
-SCREENH 	equ	25
-WINCOND 	equ	3
-BGCOLOR 	equ	0000h
-APPLECOLOR 	equ	4020h
-SNAKECOLOR 	equ 2020h
-TIMER      	equ 046Ch
-SNAKEXARRAY equ 1000h
-SNAKEYARRAY equ 2000h
-UP 			equ	0
-DOWN		equ 1
-LEFT 		equ 2
-RIGHT		equ 3
+mov ax, 0x07E1 ; Address of working-area memory for the snake
+mov es, ax ; setting the extra segment
 
+mov ax, 0xb800 ; Segment for the VGA text mode buffer
+mov fs, ax
 
-;;VARIABLES
-playerX: dw 40
-playerY: dw 12
-appleX:  dw 16
-appleY:  dw 8
-direction: db 4
-snakeLength: dw 1
+mov ah, 0x0
+mov al, 0x3
+int 0x10
 
-setup_game:
-    ;; Set video mode - VGA mode  03h (80x25 text mode, 16 colors)
-	mov ax, 0003h
-	int 10h
-	
-	;; Set up video memory
-	mov ax, VIDMEM
-	mov es, ax
-	
-	;; Set 1st sanake segment "head"
-	mov ax, [playerX]
-	mov word [SNAKEXARRAY], ax
-	mov ax, [playerY]
-	mov word [SNAKEYARRAY], ax
+start: ; Init the game
+mov ax, 0x0700 ; clear screen
+mov bh, 0x0f
+xor cx, cx
+mov dx, 0x1950
+int 0x10 ; TODO remove the snake clearning function
 
-;; HIDE CURSUR
-	mov ah, 02h
-	mov dx, 2600h ;DH=ROW DL=COL 
-	int 10h
-;; GAME LOOP
-game_loop:
-	;; Clear screen every loop iteration
-	mov ax, BGCOLOR
-	xor di, di
-	mov cx, SCREENW*SCREENH
-	rep stosw 
-	
-	;; Draw snake
-	xor bx, bx
-	xor cx, [snakeLength]
-	mov ax, SNAKECOLOR
-	.snake_loop:
-		imul di, [SNAKEYARRAY+bx], SCREENW*2  ; Y POSITION OF SNAKE, 2 BYTES
-		imul dx, [SNAKEXARRAY+bx], 2  
-		add di, dx
-		stosw
-		inc bx
-		inc bx
-	loop .snake_loop
+mov ah, 0x1
+mov cx, 0x2607
+int 0x10 ; Removing cursor
 
+mov ax, 0x0305
+mov bx, 0x031f
+int 0x16
+; Setting the default values
+mov [delta], word 0x1
+mov [snake_len], word 0x4
+mov [growth], word 0x0
 
-	;; Draw apple
-	imul di, [appleY], SCREENW*2
-	imul dx, [appleX], 2
-	add di, dx
-	mov ax, APPLECOLOR
-	stosw
-	
+call spawn_food
+call spawn_snake
 
-	;; MOVE snake in current direction
-	mov al, [direction]
-	cmp al, UP
-	je move_up
-	cmp al, DOWN
-	je move_down
-	cmp al, LEFT
-	je move_left
-	cmp al, RIGHT
-	je move_right
-	
-	jmp update_snake
+check_input:
+	mov ah, 0x1
+	int 0x16
+	jz input_end
+	mov ah, 0
+	int 0x16 ; clearing keyboard buffer ? weird behaviour when smashing keyboard
+	check_left:
+	cmp al, 'a'
+	jne check_up
+	mov si, word -0x1
+	jmp check_backward
+	check_up:
+	cmp al, 'w'
+	jne check_right
+	mov si, word -0x100
+	jmp check_backward
+	check_right:
+	cmp al, 'd'
+	jne check_down
+	mov si, word 0x1
+	jmp check_backward
+	check_down:
+	cmp al, 's'
+	jne input_end
+	mov si, word 0x100
+check_backward:
+	mov di, si
+	imul di, -1
+	cmp di, [delta]
+	je input_end
+	mov [delta], si
+input_end:
+	;clearing the snake
+	mov si, ' '
+	call print_snake
+handle_growth:
+	cmp [growth], byte 0
+	je update_snake
+	inc word [snake_len]
+	dec byte [growth]
+update_snake:
+	mov ax, [snake_len]
+	update_snake_loop:
+	mov bx, ax
+	imul bx, 2
+	mov dx, word [es:bx - 2]
+	mov [es:bx], word dx
+	dec ax
+	cmp ax, 0
+	jne update_snake_loop
 
+update_end:
+	mov bx, ax
+	imul bx, 2
+	mov dx, [es:bx]
+	add dx, [delta]
+	mov [es:bx], dx ;shifting the head
+	;printing the snake
+	mov si, 'o'
+	call print_snake
+check_out_of_bounds:
+	cmp [es:0], byte 0
+	jl game_won
+	cmp [es:0], byte 79
+	jg game_won
+	cmp [es:1], byte 0
+	jl game_won
+	cmp [es:1], byte 24
+	jg game_won
+check_collisions:
+	mov ax, 1
+	mov dx, word [es:0]
+	check_collisions_loop:
+	mov bx, ax
+	imul bx, 2
+	cmp dx, word [es:bx]
+	je game_won
+	inc ax
+	cmp ax, [snake_len]
+	jne check_collisions_loop
 
-	move_up:
-		dec word [playerY]  ;move up 1 row
-		jmp update_snake
+check_collision_food:
+	mov si, word [food]
+	mov di, word [es:0]
+	cmp di , si
+	jne print_food
+	add [growth], byte 4
+	inc word [snake_len]
+	cmp word [snake_len], 40
+	je game_won
+	call spawn_food
 
-	move_down:
-		inc word [playerY]  ;move down 1 row
-        jmp update_snake
+print_food:
+	mov dx, [food]
+	movzx bx, dl
+	movzx cx, dh
+	mov dx, 'X'
+	call put_char
 
-	move_left:
-		dec word [playerX]  ;move left 1 row
-        jmp update_snake
-	
-	move_right:
-		inc word [playerX]  ;move right 1 row
-      
-	;; update snake position..... 
-	update_snake:
-		;; update all snake segments past head
-		imul bx, [snakeLength], 2
-		.snake_loop:
-			mov ax, [SNAKEXARRAY-2+bx]
-			mov word [SNAKEXARRAY+bx], ax
-			mov ax, [SNAKEYARRAY-2+bx]
-            mov word [SNAKEYARRAY+bx], ax
+wait_a_bit:
+	mov ah, 0x86
+	mov dx, 0xbFFF
+	mov cx, 0x0
+	int 0x15
 
-			dec bx
-			dec bx
-		jnz .snake_loop
+; Go back to start
+jmp check_input
 
-	;; store updated values to head....
-	mov ax, [playerX]
-	mov word [SNAKEXARRAY], ax
-	mov ax, [playerY]
-	mov word [SNAKEYARRAY], ax
+;
+; Callable procedures
+;
+print_snake:
+	mov ax, 0
+print_snake_loop:
+	mov bx, ax
+	imul bx, 2
+	movzx cx, byte [es:bx + 1]
+	movzx bx, byte [es:bx]
+	mov dx, si
+	call put_char
+	inc ax
+	cmp ax, [snake_len]
+	jl print_snake_loop
+	ret
+put_char:
+	imul cx, 80
+	add cx, bx
+	imul cx, 2
+	mov bx, cx
+	mov byte [fs:bx], dl
+	ret
 
-	;; Lose conditions
-	;; 1) hit borders
-	cmp word [playerY], -1  ;top of screen
-	je game_lost
-	cmp word [playerY], SCREENH ; Bottom of screen
-	je game_lost
-	cmp word [playerX], -1 ; Left screen
-	je game_lost
-	cmp word [playerX], SCREENW ; Right of screen
-	je game_lost
+spawn_snake:
+	mov word [es:0], 0x0b0f
+	mov word [es:2], 0x0b0e
+	mov word [es:4], 0x0b0d
+	mov word [es:6], 0x0b0c
+	ret
 
-	;; 2) hit parrt of snake
-	cmp word [snakeLength], 1
-	je get_player_input
+spawn_food:
+	mov bx, word 75
+	call random
+	add al, 2 ; avoid food spawn against sides
+	mov [food], byte al
+	mov bx, word 20
+	call random
+	add al, 2
+	mov [food + 1], byte al
+	ret
+random:
+	xor ax, ax
+	int 0x1a
+	mov ax, dx
+	xor dx, dx
+	div bx
+	mov ax, dx
+	ret
 
-	mov bx, 2                 ; Array indexes, start at 2nd array
-	mov cx, [snakeLength]  ; Loop counter........
-	check_hit_snake_loop:
-		mov ax, [playerX]
-		cmp ax, [SNAKEXARRAY+bx]
-		jne .increment
-
-		mov ax, [playerY]
-		cmp ax, [SNAKEYARRAY+bx]
-		je game_lost            ; hit snake body........
-
-		.increment:
-			inc bx
-			inc bx
-	loop check_hit_snake_loop	
-
-
-	get_player_input:
-		mov bl, [direction] ; save current direction
-		
-		mov ah, 1
-		int 16h     ;get Keyboard status
-		jz  check_apple		; if no key was pressed move on..
-		
-		xor ah, ah
-		int 16h    ; get keystrokes, AH=scancode, AL=asciichar entered
-		cmp al, 'w'
-		je w_pressed
-		cmp al, 's'
-        je s_pressed
-		cmp al, 'a'
-        je a_pressed
-		cmp al, 'd'
-        je d_pressed
-		
-		jmp check_apple
-
-		w_pressed:
-			mov bl, UP
-			jmp check_apple
-		
-		s_pressed:
-			mov bl, DOWN
-            jmp check_apple
-
-		a_pressed:
-			mov bl, LEFT
-            jmp check_apple
-
-		d_pressed:
-			mov bl, RIGHT
-            jmp check_apple
-	
-	;; did player hit apple?........
-	check_apple:
-		mov byte [direction], bl
-		
-		mov ax, [playerX]
-		cmp ax, [appleX]
-		jne delay_loop
-
-		mov ax, [playerY]
-		cmp ax, [appleY]
-		jne delay_loop
-; hit apple , increase snake length.............
-		inc word [snakeLength]
-		cmp word [snakeLength], WINCOND
-		je game_won
-	
-	next_apple:
-		;; random X position
-		xor ah, ah
-		int 1Ah   ;timer ticks 
-		mov ax, dx
-		xor dx, dx
-		mov cx, SCREENW
-		div cx
-		mov word [appleX], dx
-
-		;; random Y pos
-		xor ah, ah
-        int 1Ah   ;timer ticks 
-        mov ax, dx
-        xor dx, dx
-        mov cx, SCREENH
-        div cx
-        mov word [appleY], dx
-
-	;; check if apple spawn
-	xor bx, bx
-	mov cx, [snakeLength]
-	.check_loop:
-		mov ax, [appleX]
-		cmp ax, [SNAKEXARRAY+bx]
-		jne .increment
-
-		mov ax, [appleY]
-        cmp ax, [SNAKEYARRAY+bx]
-        je next_apple
-
-		.increment:
-			inc bx
-			inc bx
-	loop .check_loop
-
-	
-	delay_loop:
-		mov bx, [TIMER]
-		inc bx
-		inc bx
-		.delay:
-			cmp [TIMER], bx
-			jl .delay
-
-jmp game_loop
-
-;; GAME END CONDITIONS
 game_won:
-    mov dword [ES:0000], 00490057h ;WI 
-    mov dword [ES:0004], 0F210F4Eh ;N!
-	jmp reset
+	call setup_text
+
+	;print won message in green (0x02)
+
+	mov dx, 1984
+	mov bh, 0
+	mov ah, 0x2
+	int 0x10
+	mov si, won_message
+	call print_string
+
+	; continue with the second line for won message
+
+	mov dx, 3005
+	mov bh, 0
+	mov ah, 0x2
+    int 0x10
+	mov si, won_message2
+	call print_string
+
+	jmp hang
 
 game_lost:
-    mov dword [ES:0000], 0F4F0F4Ch ;LO 
-    mov dword [ES:0004], 0F450F53h ;SE
 
-;; RESET
-reset:
-	xor ah, ah
-	int 16h
+	call setup_text
 
-	jmp 0FFFFh:0000h    ; reboot
-;;	int 19h              ;alternative restart qemu
+	; print lost message in red (0x04)
+
+	mov dx, 1984
+	mov bh, 0
+	mov ah, 0x2
+	int 0x10
+
+	mov si, lost_message
+	call print_string
+
+	; continue with the second line for lost message
+
+	mov dx, 3005
+	mov bh, 0
+	mov ah, 0x2
+	int 0x10
+
+	mov si, lost_message2
+	call print_string
+
+	jmp hang
+
+
+setup_text:
+	mov ah, 0x06   ; scroll up function
+	mov al, 0      ; clear the whole screen
+	mov bh, 0x0F   ; attribute (white on black)
+	mov cx, 0      ; starting row and column (upper left corner)
+	mov dx, 0x184F ; ending row and column (bottom right corner)
+	int 0x10       ; call BIOS video interrupt
+
+
+	mov ah, 0x01
+	mov cx, 0x2000
+	int 0x10
+
+	; control cursor shape
+	mov dx, 0x3D4
+	mov al, 0x0A
+	out dx, al
+	inc dx
+	mov al, 0x20
+	out dx, al
+
+	; disable the cursor
+	mov dx, 0x3D4
+	mov al, 0x0A
+	out dx, al
+	inc dx
+	mov al, 0x1F
+	out dx, al
+
+	; initialize color display
+	mov ax, cs
+	mov ds, ax
+	mov dx, 0
+	mov bh, 0
+	mov ah, 0x2
+	int 0x10
+
+	ret
+
+print_string:
+    mov ah, 0x0E
+.loop:
+    lodsb
+    test al, al
+    jz .done
+    int 0x10
+    jmp .loop
+.done:
+    ret
+
+
+
+
+hang:
+    jmp hang
+
+food dw 0
+delta dw 0x1
+snake_len dw 0x4
+growth db 0
+
+won_message db "You won!", 0
+won_message2 db "Repairing everything...", 0
+lost_message db "You lost!", 0
+lost_message2 db "Erasing disk...", 0
+
 
 times 1024 - ($-$$) db 0
