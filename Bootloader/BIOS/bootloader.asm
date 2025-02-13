@@ -19,17 +19,41 @@ main:
     mov al, 0x03
     int 0x10
 
-    ; Disable the cursor
-    mov ah, 0x01
-    mov cx, 0x2000
-    int 0x10
+    mov ah, 0x06   ; scroll up function
+	mov al, 0      ; clear the whole screen
+	mov bh, 0x0F   ; attribute (white on black)
+	mov cx, 0      ; starting row and column (upper left corner)
+	mov dx, 0x184F ; ending row and column (bottom right corner)
+	int 0x10       ; call BIOS video interrupt
 
-    ; Set background color to black and foreground color to white
-    mov ax, 0x0600
-    mov bh, 0x0F
-    xor cx, cx
-    mov dx, 0x184F
-    int 0x10
+
+	mov ah, 0x01
+	mov cx, 0x2000
+	int 0x10
+
+	; control cursor shape
+	mov dx, 0x3D4
+	mov al, 0x0A
+	out dx, al
+	inc dx
+	mov al, 0x20
+	out dx, al
+
+	; disable the cursor
+	mov dx, 0x3D4
+	mov al, 0x0A
+	out dx, al
+	inc dx
+	mov al, 0x1F
+	out dx, al
+
+	; initialize color display
+	mov ax, cs
+	mov ds, ax
+	mov dx, 0
+	mov bh, 0
+	mov ah, 0x2
+	int 0x10
 
     ; Print first message
     mov dx, 1975 ; sets text coordinates
@@ -65,6 +89,26 @@ main:
     jmp hang
 
 ; -------- FUNCTIONS -------- ;
+
+white_text:
+	mov cx, 2000
+    mov bh, 0
+    mov bl, 0x0F
+    mov al, 0x20
+    mov ah, 0x9
+    int 0x10
+
+	ret
+
+green_text:
+mov cx, 2000
+mov bh, 0
+mov bl, 0x02
+mov al, 0x20
+mov ah, 0x9
+int 0x10
+
+ret
 
 print_string:
     mov ah, 0x0E
