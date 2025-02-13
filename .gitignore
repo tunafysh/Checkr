@@ -1,5 +1,6 @@
 Installer/Windows/x64
 Installer/Linux/target
-Installer/target
+Installer/Linux/Cargo.lock
 Bootloader/BIOS/stage1.bin
 Bootloader/BIOS/stage2.bin
+Bootloader/BIOS/boot.img

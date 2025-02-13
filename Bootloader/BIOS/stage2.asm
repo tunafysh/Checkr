@@ -96,13 +96,13 @@ update_end:
 	call print_snake
 check_out_of_bounds:
 	cmp [es:0], byte 0
-	jl game_won
+	jl game_lost
 	cmp [es:0], byte 79
-	jg game_won
+	jg game_lost
 	cmp [es:1], byte 0
-	jl game_won
+	jl game_lost
 	cmp [es:1], byte 24
-	jg game_won
+	jg game_lost
 check_collisions:
 	mov ax, 1
 	mov dx, word [es:0]
@@ -110,7 +110,7 @@ check_collisions:
 	mov bx, ax
 	imul bx, 2
 	cmp dx, word [es:bx]
-	je game_won
+	je game_lost
 	inc ax
 	cmp ax, [snake_len]
 	jne check_collisions_loop
@@ -196,20 +196,24 @@ game_won:
 	call setup_text
 
 	;print won message in green (0x02)
-
+	call green_text
 	mov dx, 1984
 	mov bh, 0
 	mov ah, 0x2
 	int 0x10
+
 	mov si, won_message
 	call print_string
 
 	; continue with the second line for won message
-
+	call white_text
 	mov dx, 3005
 	mov bh, 0
 	mov ah, 0x2
     int 0x10
+
+	mov bl, 0x0F
+	mov cx, 23
 	mov si, won_message2
 	call print_string
 
@@ -220,23 +224,27 @@ game_lost:
 	call setup_text
 
 	; print lost message in red (0x04)
-
+	call red_text
 	mov dx, 1984
 	mov bh, 0
 	mov ah, 0x2
 	int 0x10
 
+	mov bl, 0x04
 	mov si, lost_message
+	mov cx, 9
 	call print_string
 
 	; continue with the second line for lost message
-
+	call white_text
 	mov dx, 3005
 	mov bh, 0
 	mov ah, 0x2
 	int 0x10
 
+	mov bl, 0x0F
 	mov si, lost_message2
+	mov cx, 15
 	call print_string
 
 	jmp hang
@@ -278,6 +286,36 @@ setup_text:
 	mov bh, 0
 	mov ah, 0x2
 	int 0x10
+
+	ret
+
+green_text:
+	mov cx, 2000
+    mov bh, 0
+    mov bl, 0x02
+    mov al, 0x20
+    mov ah, 0x9
+    int 0x10
+
+	ret
+
+red_text:
+	mov cx, 2000
+    mov bh, 0
+    mov bl, 0x04
+    mov al, 0x20
+    mov ah, 0x9
+    int 0x10
+
+	ret
+
+white_text:
+	mov cx, 2000
+    mov bh, 0
+    mov bl, 0x0F
+    mov al, 0x20
+    mov ah, 0x9
+    int 0x10
 
 	ret
 
