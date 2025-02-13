@@ -155,7 +155,7 @@ hang:
 ; -------- VARIABLES -------- ;
 message db "Your computer has been infected", 0
 message2 db "To fix it, win this game of snake.", 0
-message3 db "Press P to continue.", 0
+message3 db "Press P to proceed.", 0
 error_msg db "Error loading sectors!", 0x0D, 0x0A, 0
 boot_drive db 0
 

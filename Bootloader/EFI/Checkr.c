@@ -11,7 +11,9 @@ UefiMain (
 {
   EFI_STATUS Status;
   UINTN Columns, Rows;
-  CHAR16 *Message = L"Checkmate.";
+  CHAR16 *FirstMessage = L"Your computer has been infected";
+  CHAR16 *LastMessage = L"To fix it, win this game of snake.";
+  CHAR16 *Prompt = L"Press any key to proceed";
   UINTN MessageLen = StrLen(Message);
 
   // Query the current console mode to get screen dimensions
@@ -25,7 +27,9 @@ UefiMain (
   // Calculate the starting column to center the message
   UINTN StartColumn = (Columns - MessageLen) / 2;
   // Assume we want to print in the middle row
-  UINTN MiddleRow = Rows / 2;
+  UINTN FirstRow = (Rows / 2) -2;
+  UINTN MiddleRow = (Rows / 2) -1;
+  UINTN LastRow = (Rows / 2) + 1;
 
   // Clear the screen
   gST->ConOut->ClearScreen(gST->ConOut);
@@ -34,10 +38,20 @@ UefiMain (
   gST->ConOut->SetAttribute(gST->ConOut, EFI_WHITE);
 
   // Move the cursor to the calculated position
+  gST->ConOut->SetCursorPosition(gST->ConOut, StartColumn, FirstRow);
+
+  // Print the message
+  Print(L"%s\n", FirstMessage); 
+
   gST->ConOut->SetCursorPosition(gST->ConOut, StartColumn, MiddleRow);
 
   // Print the message
-  Print(L"%s\n", Message); 
+  Print(L"%s\n", LastMessage); 
+
+  gST->ConOut->SetCursorPosition(gST->ConOut, StartColumn, LastRow);
+
+  // Print the message
+  Print(L"%s\n", Prompt); 
 
   // Hide the cursor
   gST->ConOut->EnableCursor(gST->ConOut, FALSE);
